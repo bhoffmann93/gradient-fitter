@@ -18,6 +18,9 @@ const App = () => {
   const [lockFrequency, setLockFrequency] = React.useState(true);
   const [extractedColors, setExtractedColors] = React.useState([]);
   const [paletteMethod, setPaletteMethod] = React.useState('dominant'); // 'dominant' | 'generative'
+  const [paletteFitMode, setPaletteFitMode] = React.useState('cosine'); // 'cosine' | 'poly'
+  // Holds the last fitted result for palette mode so canvas effects can redraw after commit
+  const [paletteDrawData, setPaletteDrawData] = React.useState(null);
   const paletteGradientRef = React.useRef(null);
   const paletteSwatchRef = React.useRef(null);
 
@@ -76,6 +79,28 @@ const App = () => {
       x[i] = (v[i] - sum) / M[i][i];
     }
     return x;
+  };
+
+  // --- Math Logic: Polynomial Solver ---
+  const fitPolynomial = (samples, deg) => {
+    const N = deg + 1;
+    const ATA = Array(N).fill(0).map(() => Array(N).fill(0));
+    const ATb = { r: Array(N).fill(0), g: Array(N).fill(0), b: Array(N).fill(0) };
+    for (let i = 0; i < samples.length; i++) {
+      const t = i / (samples.length - 1);
+      const powers = Array.from({ length: N }, (_, p) => Math.pow(t, p));
+      for (let row = 0; row < N; row++) {
+        for (let col = 0; col < N; col++) ATA[row][col] += powers[row] * powers[col];
+        ATb.r[row] += powers[row] * samples[i].r;
+        ATb.g[row] += powers[row] * samples[i].g;
+        ATb.b[row] += powers[row] * samples[i].b;
+      }
+    }
+    return {
+      r: solveLinearSystem(ATA, ATb.r),
+      g: solveLinearSystem(ATA, ATb.g),
+      b: solveLinearSystem(ATA, ATb.b),
+    };
   };
 
   // --- Math Logic: Iterative Solver (Cosine) ---
@@ -293,16 +318,13 @@ const App = () => {
       return spread + lumRange * 200; // weight luminance range
     };
 
-    let best = null, bestScore = -Infinity;
+    const allRuns = [];
     for (let r = 0; r < runs; r++) {
-      // Random pixel init (k-means++)
+      // k-means++ random init
       const inits = [];
       inits.push(pixels[Math.floor(Math.random() * pixels.length)]);
       for (let i = 1; i < k; i++) {
-        const weights = pixels.map(px => {
-          const minD = Math.min(...inits.map(c => dist2(px, c)));
-          return minD;
-        });
+        const weights = pixels.map(px => Math.min(...inits.map(c => dist2(px, c))));
         const total = weights.reduce((a, b) => a + b, 0);
         let rand = Math.random() * total;
         let chosen = pixels[pixels.length - 1];
@@ -313,10 +335,12 @@ const App = () => {
         inits.push(chosen);
       }
       const result = kmeans(inits);
-      const s = score(result);
-      if (s > bestScore) { bestScore = s; best = result; }
+      allRuns.push({ result, score: score(result) });
     }
-    return best;
+    // Sort by score, randomly pick from top 5 so regenerate gives visible variety
+    allRuns.sort((a, b) => b.score - a.score);
+    const topN = allRuns.slice(0, Math.min(5, allRuns.length));
+    return topN[Math.floor(Math.random() * topN.length)].result;
   };
 
   // --- Palette Extraction & Fitting ---
@@ -373,14 +397,16 @@ const App = () => {
       setExtractedColors(withLuminance);
       drawSwatches(withLuminance);
 
-      // Fit cosine palette
-      const result = solveCosineParams(withLuminance, solverSteps, lockFrequency);
-      setCoefficients(result);
-      generateGLSL(result, 'cosine');
-      drawGraph(withLuminance, result, 'cosine');
-      renderGradientPreview(result, 'cosine');
-      drawPaletteGradient(result);
-      if (appMode === 'line') drawOverlay();
+      // Fit both, primary determined by paletteFitMode
+      const primaryResult = paletteFitMode === 'cosine'
+        ? solveCosineParams(withLuminance, solverSteps, lockFrequency)
+        : fitPolynomial(withLuminance, degree);
+      setCoefficients(primaryResult);
+      setGlslCode(buildGLSL(primaryResult, paletteFitMode));
+      drawGraph(withLuminance, primaryResult, paletteFitMode);
+      renderGradientPreview(primaryResult, paletteFitMode);
+      // Defer swatch/gradient canvas drawing to after React commits the DOM
+      setPaletteDrawData({ colors: withLuminance, result: primaryResult, mode: paletteFitMode });
       setStatus('done');
     } catch (e) {
       console.error(e);
@@ -404,7 +430,7 @@ const App = () => {
     });
   };
 
-  const drawPaletteGradient = (coeffs) => {
+  const drawPaletteGradient = (coeffs, mode = 'cosine') => {
     if (!paletteGradientRef.current) return;
     const canvas = paletteGradientRef.current;
     const ctx = canvas.getContext('2d');
@@ -414,7 +440,7 @@ const App = () => {
 
     for (let x = 0; x < w; x++) {
       const t = x / (w - 1);
-      const c = evalColor(coeffs, t, 'cosine');
+      const c = evalColor(coeffs, t, mode);
       const r = Math.max(0, Math.min(1, c.r)) * 255;
       const g = Math.max(0, Math.min(1, c.g)) * 255;
       const b = Math.max(0, Math.min(1, c.b)) * 255;
@@ -470,35 +496,13 @@ const App = () => {
         let result = null;
 
         if (fitMode === 'poly') {
-          const N = degree + 1;
-          const ATA = Array(N)
-            .fill(0)
-            .map(() => Array(N).fill(0));
-          const ATb = { r: Array(N).fill(0), g: Array(N).fill(0), b: Array(N).fill(0) };
-
-          for (let i = 0; i < samples.length; i++) {
-            const t = i / (samples.length - 1);
-            const powers = [];
-            for (let p = 0; p <= degree; p++) powers.push(Math.pow(t, p));
-
-            for (let row = 0; row < N; row++) {
-              for (let col = 0; col < N; col++) ATA[row][col] += powers[row] * powers[col];
-              ATb.r[row] += powers[row] * samples[i].r;
-              ATb.g[row] += powers[row] * samples[i].g;
-              ATb.b[row] += powers[row] * samples[i].b;
-            }
-          }
-          result = {
-            r: solveLinearSystem(ATA, ATb.r),
-            g: solveLinearSystem(ATA, ATb.g),
-            b: solveLinearSystem(ATA, ATb.b),
-          };
+          result = fitPolynomial(samples, degree);
         } else {
           result = solveCosineParams(samples, solverSteps);
         }
 
         setCoefficients(result);
-        generateGLSL(result, fitMode);
+        setGlslCode(buildGLSL(result, fitMode));
         drawGraph(samples, result, fitMode);
         renderGradientPreview(result, fitMode);
         drawOverlay();
@@ -512,38 +516,37 @@ const App = () => {
   };
 
   // --- GLSL Generation ---
-  const generateGLSL = (coeffs, mode) => {
+  const buildGLSL = (coeffs, mode) => {
     const fmt = (n) => {
       let s = n.toFixed(3);
       return s.indexOf('.') === -1 ? s + '.0' : s;
     };
-
-    let code = '';
+    const deg = coeffs.r.length ? coeffs.r.length - 1 : degree;
 
     if (mode === 'poly') {
-      code = `// Polynomial Gradient (Degree ${degree})\n`;
+      let code = `// Polynomial Gradient (Degree ${deg})\n`;
       code += `vec3 gradient(float t) {\n`;
       code += `    vec3 c0 = vec3(${fmt(coeffs.r[0])}, ${fmt(coeffs.g[0])}, ${fmt(coeffs.b[0])});\n`;
-      for (let i = 1; i <= degree; i++) {
+      for (let i = 1; i <= deg; i++) {
         code += `    vec3 c${i} = vec3(${fmt(coeffs.r[i])}, ${fmt(coeffs.g[i])}, ${fmt(coeffs.b[i])});\n`;
       }
       code += `\n    vec3 color = c0`;
-      for (let i = 1; i <= degree; i++) {
+      for (let i = 1; i <= deg; i++) {
         let tStr = i === 2 ? 't*t' : i === 3 ? 't*t*t' : i === 1 ? 't' : `pow(t, ${i}.0)`;
         code += `\n        + c${i} * ${tStr}`;
       }
       code += `;\n    return clamp(color, vec3(0.0), vec3(1.0));\n}`;
+      return code;
     } else {
-      code = `// Cosine Gradient (Inigo Quilez style)\n// color(t) = a + b * cos( 2*pi * (c*t + d) )\n`;
+      let code = `// Cosine Gradient (Inigo Quilez style)\n// color(t) = a + b * cos( 2*pi * (c*t + d) )\n`;
       code += `vec3 palette(float t) {\n`;
       code += `    vec3 a = vec3(${fmt(coeffs.r.a)}, ${fmt(coeffs.g.a)}, ${fmt(coeffs.b.a)});\n`;
       code += `    vec3 b = vec3(${fmt(coeffs.r.b)}, ${fmt(coeffs.g.b)}, ${fmt(coeffs.b.b)});\n`;
       code += `    vec3 c = vec3(${fmt(coeffs.r.c)}, ${fmt(coeffs.g.c)}, ${fmt(coeffs.b.c)});\n`;
       code += `    vec3 d = vec3(${fmt(coeffs.r.d)}, ${fmt(coeffs.g.d)}, ${fmt(coeffs.b.d)});\n\n`;
       code += `    return a + b * cos( 6.28318 * (c * t + d) );\n}`;
+      return code;
     }
-
-    setGlslCode(code);
   };
 
   // --- Visualization ---
@@ -750,7 +753,14 @@ const App = () => {
 
   React.useEffect(() => {
     if (imageSrc && appMode === 'palette') performPaletteFit();
-  }, [colorCount, lockFrequency, paletteMethod]);
+  }, [colorCount, lockFrequency, paletteMethod, paletteFitMode]);
+
+  // Draw palette swatches + gradient strip AFTER React commits the DOM
+  React.useEffect(() => {
+    if (!paletteDrawData) return;
+    drawSwatches(paletteDrawData.colors);
+    drawPaletteGradient(paletteDrawData.result, paletteDrawData.mode);
+  }, [paletteDrawData]);
 
   // Switch modes: re-run the appropriate pipeline
   React.useEffect(() => {
@@ -839,6 +849,32 @@ const App = () => {
 
               {/* Settings */}
               <div className="mt-6 space-y-6">
+                {/* Fit mode toggle — line mode only */}
+                {appMode === 'line' && (
+                  <div className="space-y-3">
+                    <div className="flex bg-slate-100 p-1 rounded-lg">
+                      <button onClick={() => setFitMode('poly')}
+                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${fitMode === 'poly' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                        Polynomial
+                      </button>
+                      <button onClick={() => setFitMode('cosine')}
+                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${fitMode === 'cosine' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                        Cosine
+                      </button>
+                    </div>
+                    {fitMode === 'poly' && (
+                      <div className="flex items-center gap-4">
+                        <label className="text-xs font-medium text-slate-600 w-16">Degree</label>
+                        <input type="range" min="1" max="6" step="1" value={degree}
+                          onChange={(e) => setDegree(parseInt(e.target.value))}
+                          className="flex-1 accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+                        />
+                        <span className="text-xs font-mono bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded">{degree}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Image Processing */}
                 <div className="space-y-3 p-4 bg-slate-50 rounded-lg border border-slate-100">
                   <h3 className="text-xs font-semibold text-slate-500 flex items-center gap-2">
@@ -871,38 +907,8 @@ const App = () => {
                   </div>
                 </div>
 
-                {/* Solver controls — conditional on mode */}
-                {appMode === 'line' ? (
-                  <div className="space-y-3">
-                    <h3 className="text-xs font-semibold text-slate-500 flex items-center gap-2">
-                      <RefreshCw className="w-3 h-3" /> Solver Settings
-                    </h3>
-                    <div className="flex bg-slate-100 p-1 rounded-lg">
-                      <button onClick={() => setFitMode('poly')}
-                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${fitMode === 'poly' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-                        Polynomial
-                      </button>
-                      <button onClick={() => setFitMode('cosine')}
-                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${fitMode === 'cosine' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-                        Cosine
-                      </button>
-                    </div>
-                    {fitMode === 'poly' ? (
-                      <div className="flex items-center gap-4">
-                        <label className="text-xs font-medium text-slate-600 w-16">Degree</label>
-                        <input type="range" min="1" max="6" step="1" value={degree}
-                          onChange={(e) => setDegree(parseInt(e.target.value))}
-                          className="flex-1 accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
-                        />
-                        <span className="text-xs font-mono bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded">{degree}</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-center text-xs text-slate-400 italic">
-                        Iterative solver auto-runs {solverSteps} steps.
-                      </div>
-                    )}
-                  </div>
-                ) : (
+                {/* Palette controls */}
+                {appMode === 'palette' && (
                   <div className="space-y-3">
                     <h3 className="text-xs font-semibold text-slate-500 flex items-center gap-2">
                       <Palette className="w-3 h-3" /> Palette Settings
@@ -918,11 +924,41 @@ const App = () => {
                         Generative
                       </button>
                     </div>
-                    <p className="text-[10px] text-slate-400 leading-relaxed">
-                      {paletteMethod === 'dominant'
-                        ? 'Most frequent colors by pixel area.'
-                        : 'Runs k-means 24×, picks the palette with best perceptual spread and luminance range.'}
-                    </p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] text-slate-400 leading-relaxed">
+                        {paletteMethod === 'dominant'
+                          ? 'Most frequent colors by pixel area.'
+                          : 'Runs k-means 24×, picks the palette with best perceptual spread and luminance range.'}
+                      </p>
+                      {paletteMethod === 'generative' && imageSrc && (
+                        <button
+                          onClick={performPaletteFit}
+                          className="flex items-center gap-1 text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1 rounded ml-3 shrink-0"
+                        >
+                          <RefreshCw className="w-3 h-3" /> Regenerate
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex bg-slate-100 p-1 rounded-lg">
+                      <button onClick={() => setPaletteFitMode('cosine')}
+                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${paletteFitMode === 'cosine' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                        Cosine
+                      </button>
+                      <button onClick={() => setPaletteFitMode('poly')}
+                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${paletteFitMode === 'poly' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                        Polynomial
+                      </button>
+                    </div>
+                    {paletteFitMode === 'poly' && (
+                      <div className="flex items-center gap-4">
+                        <label className="text-xs font-medium text-slate-600 w-16">Degree</label>
+                        <input type="range" min="1" max="6" step="1" value={degree}
+                          onChange={(e) => setDegree(parseInt(e.target.value))}
+                          className="flex-1 accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+                        />
+                        <span className="text-xs font-mono bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded">{degree}</span>
+                      </div>
+                    )}
                     <div className="flex items-center gap-4">
                       <label className="text-xs font-medium text-slate-600 w-20">Colors</label>
                       <input type="range" min="3" max="12" step="1" value={colorCount}
@@ -931,36 +967,37 @@ const App = () => {
                       />
                       <span className="text-xs font-mono bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded">{colorCount}</span>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <label className="text-xs font-medium text-slate-600 w-20">Lock freq</label>
-                      <button
-                        onClick={() => setLockFrequency((v) => !v)}
-                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${lockFrequency ? 'bg-indigo-500' : 'bg-slate-300'}`}
-                      >
-                        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${lockFrequency ? 'translate-x-4' : 'translate-x-1'}`} />
-                      </button>
-                      <span className="text-xs text-slate-400">{lockFrequency ? 'Integer c (perfect loop)' : 'Free float c'}</span>
-                    </div>
-
-                    {/* Extracted color swatches */}
-                    {extractedColors.length > 0 && (
-                      <div className="space-y-1">
-                        <h4 className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Extracted Points</h4>
-                        <div className="rounded overflow-hidden border border-slate-200 h-8">
-                          <canvas ref={paletteSwatchRef} width={500} height={32} className="w-full h-full" />
-                        </div>
-                        <h4 className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide pt-1">Fitted Gradient</h4>
-                        <div className="rounded overflow-hidden border border-slate-200 h-8">
-                          <canvas ref={paletteGradientRef} width={500} height={32} className="w-full h-full" />
-                        </div>
+                    {paletteFitMode === 'cosine' && (
+                      <div className="flex items-center gap-3">
+                        <label className="text-xs font-medium text-slate-600 w-20">Lock freq</label>
+                        <button
+                          onClick={() => setLockFrequency((v) => !v)}
+                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${lockFrequency ? 'bg-indigo-500' : 'bg-slate-300'}`}
+                        >
+                          <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${lockFrequency ? 'translate-x-4' : 'translate-x-1'}`} />
+                        </button>
+                        <span className="text-xs text-slate-400">{lockFrequency ? 'Integer c (perfect loop)' : 'Free float c'}</span>
                       </div>
                     )}
+
+                    {/* Extracted color swatches — always mounted so refs are valid */}
+                    <div className={`space-y-1 ${extractedColors.length === 0 ? 'hidden' : ''}`}>
+                      <h4 className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Extracted Points</h4>
+                      <div className="rounded overflow-hidden border border-slate-200 h-8">
+                        <canvas ref={paletteSwatchRef} width={500} height={32} className="w-full h-full" />
+                      </div>
+                      <h4 className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide pt-1">Fitted Gradient</h4>
+                      <div className="rounded overflow-hidden border border-slate-200 h-8">
+                        <canvas ref={paletteGradientRef} width={500} height={32} className="w-full h-full" />
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
             </div>
 
             {/* ANALYSIS GRAPH */}
+
             <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
               <h2 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
                 <Activity className="w-4 h-4 text-slate-400" /> Analysis
