@@ -1,6 +1,18 @@
 import React from 'react';
 import { extractColors } from 'extract-colors';
-import { Upload, Activity, Code, Zap, AlertCircle, MousePointer2, Eye, RefreshCw, Sliders, Palette, Shuffle } from 'lucide-react';
+import {
+  Upload,
+  Activity,
+  Code,
+  Zap,
+  AlertCircle,
+  MousePointer2,
+  Eye,
+  RefreshCw,
+  Sliders,
+  Palette,
+  Shuffle,
+} from 'lucide-react';
 
 const App = () => {
   const [imageSrc, setImageSrc] = React.useState(null);
@@ -14,7 +26,7 @@ const App = () => {
   const [solverSteps] = React.useState(5000);
 
   // Palette Mode State
-  const [colorCount, setColorCount] = React.useState(7);
+  const [colorCount, setColorCount] = React.useState(5);
   const [lockFrequency, setLockFrequency] = React.useState(true);
   const [extractedColors, setExtractedColors] = React.useState([]);
   const [paletteMethod, setPaletteMethod] = React.useState('dominant'); // 'dominant' | 'generative' | 'api'
@@ -25,7 +37,7 @@ const App = () => {
   // Colormind API
   const [apiModel, setApiModel] = React.useState('default');
   const [apiModels, setApiModels] = React.useState(['default', 'ui']);
-  const [apiSeedCount, setApiSeedCount] = React.useState(2);
+  const [apiSeedCount, setApiSeedCount] = React.useState(3);
   const apiSeedsRef = React.useRef(null); // cached seeds so regenerate only re-POSTs
   const extractedColorsRef = React.useRef([]); // mirrors extractedColors for non-stale closures
   const paletteGradientRef = React.useRef(null);
@@ -90,7 +102,7 @@ const App = () => {
 
   // Compute t-values weighted by each color's area (dominant colors get wider t range)
   const computeWeightedTValues = (colors) => {
-    const areas = colors.map(c => c.area > 0 ? c.area : 1);
+    const areas = colors.map((c) => (c.area > 0 ? c.area : 1));
     const total = areas.reduce((a, b) => a + b, 0);
     let cum = 0;
     return colors.map((_, i) => {
@@ -103,7 +115,9 @@ const App = () => {
   // --- Math Logic: Polynomial Solver ---
   const fitPolynomial = (samples, deg, tValues = null) => {
     const N = deg + 1;
-    const ATA = Array(N).fill(0).map(() => Array(N).fill(0));
+    const ATA = Array(N)
+      .fill(0)
+      .map(() => Array(N).fill(0));
     const ATb = { r: Array(N).fill(0), g: Array(N).fill(0), b: Array(N).fill(0) };
     for (let i = 0; i < samples.length; i++) {
       const t = tValues ? tValues[i] : i / (samples.length - 1);
@@ -298,25 +312,31 @@ const App = () => {
   // --- Generative K-Means (colormind-style) ---
   // Runs k-means many times with random inits, scores each by perceptual spread, returns best.
   const generativeKMeans = (pixels, k, runs = 24) => {
-    const dist2 = (a, b) => (a[0]-b[0])**2 + (a[1]-b[1])**2 + (a[2]-b[2])**2;
+    const dist2 = (a, b) => (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2;
 
     const kmeans = (initCentroids) => {
-      let centroids = initCentroids.map(c => [...c]);
+      let centroids = initCentroids.map((c) => [...c]);
       for (let iter = 0; iter < 20; iter++) {
         const sums = Array.from({ length: k }, () => [0, 0, 0, 0]); // r,g,b,count
         for (const px of pixels) {
-          let best = 0, bestD = Infinity;
+          let best = 0,
+            bestD = Infinity;
           for (let j = 0; j < k; j++) {
             const d = dist2(px, centroids[j]);
-            if (d < bestD) { bestD = d; best = j; }
+            if (d < bestD) {
+              bestD = d;
+              best = j;
+            }
           }
-          sums[best][0] += px[0]; sums[best][1] += px[1];
-          sums[best][2] += px[2]; sums[best][3]++;
+          sums[best][0] += px[0];
+          sums[best][1] += px[1];
+          sums[best][2] += px[2];
+          sums[best][3]++;
         }
         let moved = false;
         for (let j = 0; j < k; j++) {
           if (sums[j][3] > 0) {
-            const next = [sums[j][0]/sums[j][3], sums[j][1]/sums[j][3], sums[j][2]/sums[j][3]];
+            const next = [sums[j][0] / sums[j][3], sums[j][1] / sums[j][3], sums[j][2] / sums[j][3]];
             if (dist2(next, centroids[j]) > 1) moved = true;
             centroids[j] = next;
           }
@@ -330,9 +350,8 @@ const App = () => {
     const score = (centroids) => {
       let spread = 0;
       for (let i = 0; i < centroids.length; i++)
-        for (let j = i + 1; j < centroids.length; j++)
-          spread += Math.sqrt(dist2(centroids[i], centroids[j]));
-      const lums = centroids.map(c => 0.299*c[0] + 0.587*c[1] + 0.114*c[2]);
+        for (let j = i + 1; j < centroids.length; j++) spread += Math.sqrt(dist2(centroids[i], centroids[j]));
+      const lums = centroids.map((c) => 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]);
       const lumRange = Math.max(...lums) - Math.min(...lums);
       return spread + lumRange * 200; // weight luminance range
     };
@@ -343,13 +362,16 @@ const App = () => {
       const inits = [];
       inits.push(pixels[Math.floor(Math.random() * pixels.length)]);
       for (let i = 1; i < k; i++) {
-        const weights = pixels.map(px => Math.min(...inits.map(c => dist2(px, c))));
+        const weights = pixels.map((px) => Math.min(...inits.map((c) => dist2(px, c))));
         const total = weights.reduce((a, b) => a + b, 0);
         let rand = Math.random() * total;
         let chosen = pixels[pixels.length - 1];
         for (let j = 0; j < pixels.length; j++) {
           rand -= weights[j];
-          if (rand <= 0) { chosen = pixels[j]; break; }
+          if (rand <= 0) {
+            chosen = pixels[j];
+            break;
+          }
         }
         inits.push(chosen);
       }
@@ -357,13 +379,17 @@ const App = () => {
       allRuns.push({ result, score: score(result) });
     }
     // Return the best-scoring run; compute cluster sizes for dominance weighting
-    const best = allRuns.reduce((b, r) => r.score > b.score ? r : b);
+    const best = allRuns.reduce((b, r) => (r.score > b.score ? r : b));
     const sizes = new Array(k).fill(0);
     for (const px of pixels) {
-      let bi = 0, bd = Infinity;
+      let bi = 0,
+        bd = Infinity;
       for (let j = 0; j < k; j++) {
         const d = dist2(px, best.result[j]);
-        if (d < bd) { bd = d; bi = j; }
+        if (d < bd) {
+          bd = d;
+          bi = j;
+        }
       }
       sizes[bi]++;
     }
@@ -375,7 +401,7 @@ const App = () => {
     if (!colors || colors.length < 2) return;
     let primaryResult;
     if (paletteFitMode === 'steps') {
-      const areas = colors.map(c => c.area > 0 ? c.area : 1);
+      const areas = colors.map((c) => (c.area > 0 ? c.area : 1));
       const total = areas.reduce((a, b) => a + b, 0);
       let cum = 0;
       const tBoundaries = [];
@@ -385,15 +411,14 @@ const App = () => {
       }
       primaryResult = { colors, tBoundaries };
     } else if (paletteFitMode === 'linear' || paletteFitMode === 'catmull') {
-      const tValues = weightDominance
-        ? computeWeightedTValues(colors)
-        : colors.map((_, i) => i / (colors.length - 1));
+      const tValues = weightDominance ? computeWeightedTValues(colors) : colors.map((_, i) => i / (colors.length - 1));
       primaryResult = { colors, tValues };
     } else {
       const tValues = weightDominance ? computeWeightedTValues(colors) : null;
-      primaryResult = paletteFitMode === 'cosine'
-        ? solveCosineParams(colors, solverSteps, lockFrequency, tValues)
-        : fitPolynomial(colors, degree, tValues);
+      primaryResult =
+        paletteFitMode === 'cosine'
+          ? solveCosineParams(colors, solverSteps, lockFrequency, tValues)
+          : fitPolynomial(colors, degree, tValues);
     }
     setCoefficients(primaryResult);
     setGlslCode(buildGLSL(primaryResult, paletteFitMode) + '\n\n' + buildColorGLSL(colors));
@@ -429,14 +454,16 @@ const App = () => {
         const topColors = rawColors.slice(0, colorCount);
         if (topColors.length < 2) throw new Error('Not enough distinct colors found.');
         withLuminance = topColors.map((c) => ({
-          r: c.red / 255, g: c.green / 255, b: c.blue / 255,
+          r: c.red / 255,
+          g: c.green / 255,
+          b: c.blue / 255,
           lum: 0.299 * c.red + 0.587 * c.green + 0.114 * c.blue,
           area: c.area ?? 1,
         }));
       } else if (paletteMethod === 'api') {
         if (!apiSeedsRef.current) {
           const seedRaw = await extractColors(imageData, { pixels: 5000, distance: 0.2 });
-          apiSeedsRef.current = seedRaw.slice(0, 4).map(c => [c.red, c.green, c.blue]);
+          apiSeedsRef.current = seedRaw.slice(0, 4).map((c) => [c.red, c.green, c.blue]);
         }
         const usedCount = Math.min(apiSeedCount, apiSeedsRef.current.length);
         const input = [...apiSeedsRef.current.slice(0, usedCount), ...Array(5 - usedCount).fill('N')];
@@ -448,7 +475,9 @@ const App = () => {
         const json = await res.json();
         if (!json.result) throw new Error('Unexpected Colormind response');
         withLuminance = json.result.map(([r, g, b]) => ({
-          r: r / 255, g: g / 255, b: b / 255,
+          r: r / 255,
+          g: g / 255,
+          b: b / 255,
           lum: 0.299 * r + 0.587 * g + 0.114 * b,
           area: 1,
         }));
@@ -467,7 +496,9 @@ const App = () => {
         if (pixels.length < colorCount) throw new Error('Not enough pixels to sample.');
         const clusters = generativeKMeans(pixels, colorCount);
         withLuminance = clusters.map(({ centroid: c, area }) => ({
-          r: c[0] / 255, g: c[1] / 255, b: c[2] / 255,
+          r: c[0] / 255,
+          g: c[1] / 255,
+          b: c[2] / 255,
           lum: 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2],
           area,
         }));
@@ -602,9 +633,9 @@ const App = () => {
       code += `vec3 color${i + 1} = vec3(${fmt(c.r)}, ${fmt(c.g)}, ${fmt(c.b)});\n`;
     });
     code += `\n// Array form\nvec3 palette[${colors.length}] = vec3[](\n`;
-    code += colors.map((c, i) =>
-      `    vec3(${fmt(c.r)}, ${fmt(c.g)}, ${fmt(c.b)})${i < colors.length - 1 ? ',' : ''}`
-    ).join('\n');
+    code += colors
+      .map((c, i) => `    vec3(${fmt(c.r)}, ${fmt(c.g)}, ${fmt(c.b)})${i < colors.length - 1 ? ',' : ''}`)
+      .join('\n');
     code += `\n);`;
     return code;
   };
@@ -631,8 +662,10 @@ const App = () => {
       const { colors, tValues } = coeffs;
       let code = `// Linear Interpolated Palette\nvec3 palette(float t) {\n`;
       for (let i = 0; i < colors.length - 1; i++) {
-        const c0 = colors[i], c1 = colors[i + 1];
-        const t0 = tValues[i], t1 = tValues[i + 1];
+        const c0 = colors[i],
+          c1 = colors[i + 1];
+        const t0 = tValues[i],
+          t1 = tValues[i + 1];
         const range = Math.max(0.00001, t1 - t0).toFixed(5);
         code += `    if (t < ${fmt(t1)}) return mix(\n        vec3(${fmt(c0.r)},${fmt(c0.g)},${fmt(c0.b)}),\n        vec3(${fmt(c1.r)},${fmt(c1.g)},${fmt(c1.b)}),\n        (t - ${fmt(t0)}) / ${range});\n`;
       }
@@ -655,9 +688,9 @@ const App = () => {
       code += `    return 0.5 * (b1 * p0 + b2 * p1 + b3 * p2 + b4 * p3);\n}\n\n`;
       code += `vec3 palette(float t) {\n`;
       code += `    vec3 colors[${n}] = vec3[](\n`;
-      code += colors.map((c, i) =>
-        `        vec3(${fmt(c.r)}, ${fmt(c.g)}, ${fmt(c.b)})${i < n - 1 ? ',' : ''}`
-      ).join('\n');
+      code += colors
+        .map((c, i) => `        vec3(${fmt(c.r)}, ${fmt(c.g)}, ${fmt(c.b)})${i < n - 1 ? ',' : ''}`)
+        .join('\n');
       code += `\n    );\n`;
       if (isUniform) {
         code += `    float f = clamp(t, 0.0, 1.0) * ${n - 1}.0;\n`;
@@ -666,7 +699,8 @@ const App = () => {
       } else {
         code += `    int i = ${n - 2}; float localT = 1.0;\n`;
         for (let j = 0; j < n - 1; j++) {
-          const t0 = tValues[j].toFixed(5), t1 = tValues[j + 1].toFixed(5);
+          const t0 = tValues[j].toFixed(5),
+            t1 = tValues[j + 1].toFixed(5);
           const range = Math.max(0.00001, tValues[j + 1] - tValues[j]).toFixed(5);
           const cond = j === 0 ? `if` : j === n - 2 ? `else` : `else if`;
           const guard = j === n - 2 ? `` : ` (t < ${t1})`;
@@ -721,7 +755,8 @@ const App = () => {
     if (mode === 'linear') {
       const { colors, tValues } = coeffs;
       for (let i = 0; i < colors.length - 1; i++) {
-        const t0 = tValues[i], t1 = tValues[i + 1];
+        const t0 = tValues[i],
+          t1 = tValues[i + 1];
         if (t <= t1 || i === colors.length - 2) {
           const frac = t1 > t0 ? Math.max(0, Math.min(1, (t - t0) / (t1 - t0))) : 0;
           return {
@@ -736,7 +771,8 @@ const App = () => {
     if (mode === 'catmull') {
       const { colors, tValues } = coeffs;
       const n = colors.length;
-      let segIdx = n - 2, localT = 1.0;
+      let segIdx = n - 2,
+        localT = 1.0;
       for (let j = 0; j < n - 1; j++) {
         if (t <= tValues[j + 1] || j === n - 2) {
           segIdx = j;
@@ -746,20 +782,27 @@ const App = () => {
         }
       }
       const p = (idx) => colors[Math.max(0, Math.min(n - 1, idx))];
-      const p0 = p(segIdx - 1), p1 = p(segIdx), p2 = p(segIdx + 1), p3 = p(segIdx + 2);
-      const lt = localT, lt2 = lt * lt, lt3 = lt2 * lt;
-      const b1 = -lt3 + 2*lt2 - lt;
-      const b2 = 3*lt3 - 5*lt2 + 2;
-      const b3 = -3*lt3 + 4*lt2 + lt;
+      const p0 = p(segIdx - 1),
+        p1 = p(segIdx),
+        p2 = p(segIdx + 1),
+        p3 = p(segIdx + 2);
+      const lt = localT,
+        lt2 = lt * lt,
+        lt3 = lt2 * lt;
+      const b1 = -lt3 + 2 * lt2 - lt;
+      const b2 = 3 * lt3 - 5 * lt2 + 2;
+      const b3 = -3 * lt3 + 4 * lt2 + lt;
       const b4 = lt3 - lt2;
       return {
-        r: 0.5 * (b1*p0.r + b2*p1.r + b3*p2.r + b4*p3.r),
-        g: 0.5 * (b1*p0.g + b2*p1.g + b3*p2.g + b4*p3.g),
-        b: 0.5 * (b1*p0.b + b2*p1.b + b3*p2.b + b4*p3.b),
+        r: 0.5 * (b1 * p0.r + b2 * p1.r + b3 * p2.r + b4 * p3.r),
+        g: 0.5 * (b1 * p0.g + b2 * p1.g + b3 * p2.g + b4 * p3.g),
+        b: 0.5 * (b1 * p0.b + b2 * p1.b + b3 * p2.b + b4 * p3.b),
       };
     }
     if (mode === 'poly') {
-      let r = 0, g = 0, b = 0;
+      let r = 0,
+        g = 0,
+        b = 0;
       for (let i = 0; i < coeffs.r.length; i++) {
         const term = Math.pow(t, i);
         r += coeffs.r[i] * term;
@@ -880,8 +923,10 @@ const App = () => {
     ctx.fillStyle = 'rgba(0,0,0,0.15)';
     ctx.fillRect(0, 0, w, h);
 
-    const x1 = p1.x * w, y1 = p1.y * h;
-    const x2 = p2.x * w, y2 = p2.y * h;
+    const x1 = p1.x * w,
+      y1 = p1.y * h;
+    const x2 = p2.x * w,
+      y2 = p2.y * h;
 
     ctx.beginPath();
     ctx.moveTo(x1, y1);
@@ -922,9 +967,15 @@ const App = () => {
       img.src = imageSrc;
       img.onload = () => {
         const MAX = 500;
-        let w = img.width, h = img.height;
-        if (w > h && w > MAX) { h *= MAX / w; w = MAX; }
-        else if (h > MAX) { w *= MAX / h; h = MAX; }
+        let w = img.width,
+          h = img.height;
+        if (w > h && w > MAX) {
+          h *= MAX / w;
+          w = MAX;
+        } else if (h > MAX) {
+          w *= MAX / h;
+          h = MAX;
+        }
         w = Math.round(w);
         h = Math.round(h);
 
@@ -973,8 +1024,10 @@ const App = () => {
   React.useEffect(() => {
     if (paletteMethod !== 'api') return;
     fetch('http://colormind.io/list/')
-      .then(r => r.json())
-      .then(data => { if (data.result?.length) setApiModels(data.result); })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.result?.length) setApiModels(data.result);
+      })
       .catch(() => {}); // silently keep defaults on failure
   }, [paletteMethod]);
 
@@ -1008,9 +1061,7 @@ const App = () => {
             <button
               onClick={() => setAppMode('line')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                appMode === 'line'
-                  ? 'bg-white text-indigo-600 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
+                appMode === 'line' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
               }`}
             >
               <MousePointer2 className="w-4 h-4" /> Line Sample
@@ -1018,9 +1069,7 @@ const App = () => {
             <button
               onClick={() => setAppMode('palette')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                appMode === 'palette'
-                  ? 'bg-white text-indigo-600 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
+                appMode === 'palette' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
               }`}
             >
               <Palette className="w-4 h-4" /> Palette Extract
@@ -1034,10 +1083,17 @@ const App = () => {
             <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="font-semibold text-slate-800 flex items-center gap-2">
-                  {appMode === 'line'
-                    ? <><MousePointer2 className="w-4 h-4 text-slate-400" />{imageSrc ? 'Sample Line' : 'Input'}</>
-                    : <><Palette className="w-4 h-4 text-slate-400" />Palette Source</>
-                  }
+                  {appMode === 'line' ? (
+                    <>
+                      <MousePointer2 className="w-4 h-4 text-slate-400" />
+                      {imageSrc ? 'Sample Line' : 'Input'}
+                    </>
+                  ) : (
+                    <>
+                      <Palette className="w-4 h-4 text-slate-400" />
+                      Palette Source
+                    </>
+                  )}
                 </h2>
                 <label className="text-xs bg-indigo-600 text-white px-3 py-1 rounded cursor-pointer hover:bg-indigo-700">
                   {imageSrc ? 'Change' : 'Upload'}
@@ -1069,23 +1125,34 @@ const App = () => {
                 {appMode === 'line' && (
                   <div className="space-y-3">
                     <div className="flex bg-slate-100 p-1 rounded-lg">
-                      <button onClick={() => setFitMode('poly')}
-                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${fitMode === 'poly' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                      <button
+                        onClick={() => setFitMode('poly')}
+                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${fitMode === 'poly' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                      >
                         Polynomial
                       </button>
-                      <button onClick={() => setFitMode('cosine')}
-                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${fitMode === 'cosine' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                      <button
+                        onClick={() => setFitMode('cosine')}
+                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${fitMode === 'cosine' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                      >
                         Cosine
                       </button>
                     </div>
                     {fitMode === 'poly' && (
                       <div className="flex items-center gap-4">
                         <label className="text-xs font-medium text-slate-600 w-16">Degree</label>
-                        <input type="range" min="1" max="6" step="1" value={degree}
+                        <input
+                          type="range"
+                          min="1"
+                          max="6"
+                          step="1"
+                          value={degree}
                           onChange={(e) => setDegree(parseInt(e.target.value))}
                           className="flex-1 accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
                         />
-                        <span className="text-xs font-mono bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded">{degree}</span>
+                        <span className="text-xs font-mono bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded">
+                          {degree}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -1098,7 +1165,12 @@ const App = () => {
                   </h3>
                   <div className="flex items-center gap-4">
                     <label className="text-xs font-medium text-slate-600 w-16">Contrast</label>
-                    <input type="range" min="0" max="2" step="0.1" value={contrast}
+                    <input
+                      type="range"
+                      min="0"
+                      max="2"
+                      step="0.1"
+                      value={contrast}
                       onChange={(e) => setContrast(parseFloat(e.target.value))}
                       className="flex-1 accent-indigo-500 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer"
                     />
@@ -1107,11 +1179,21 @@ const App = () => {
                   <div className="flex items-center gap-4">
                     <label className="text-xs font-medium text-slate-600 w-16">Levels</label>
                     <div className="flex-1 flex gap-2">
-                      <input type="range" min="0" max="255" step="1" value={minLevel}
+                      <input
+                        type="range"
+                        min="0"
+                        max="255"
+                        step="1"
+                        value={minLevel}
                         onChange={(e) => setMinLevel(Math.min(parseInt(e.target.value), maxLevel - 5))}
                         className="flex-1 accent-slate-800 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer"
                       />
-                      <input type="range" min="0" max="255" step="1" value={maxLevel}
+                      <input
+                        type="range"
+                        min="0"
+                        max="255"
+                        step="1"
+                        value={maxLevel}
                         onChange={(e) => setMaxLevel(Math.max(parseInt(e.target.value), minLevel + 5))}
                         className="flex-1 accent-slate-400 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer"
                       />
@@ -1131,24 +1213,33 @@ const App = () => {
                     </h3>
                     {/* Method toggle */}
                     <div className="flex bg-slate-100 p-1 rounded-lg">
-                      <button onClick={() => setPaletteMethod('dominant')}
-                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${paletteMethod === 'dominant' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                      <button
+                        onClick={() => setPaletteMethod('dominant')}
+                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${paletteMethod === 'dominant' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                      >
                         Dominant
                       </button>
-                      <button onClick={() => setPaletteMethod('generative')}
-                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${paletteMethod === 'generative' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                      <button
+                        onClick={() => setPaletteMethod('generative')}
+                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${paletteMethod === 'generative' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                      >
                         Generative
                       </button>
-                      <button onClick={() => setPaletteMethod('api')}
-                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${paletteMethod === 'api' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                      <button
+                        onClick={() => setPaletteMethod('api')}
+                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${paletteMethod === 'api' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                      >
                         API
                       </button>
                     </div>
                     <div className="flex items-center justify-between">
                       <p className="text-[10px] text-slate-400 leading-relaxed">
-                        {paletteMethod === 'dominant' && 'Ranks colors by pixel coverage — most frequent colors first. Deterministic.'}
-                        {paletteMethod === 'generative' && 'Runs k-means 24× on random pixel subsets, picks the run with best color spread. Varies on regenerate.'}
-                        {paletteMethod === 'api' && `Colormind AI palette — ${apiSeedCount} color${apiSeedCount !== 1 ? 's' : ''} locked from image, ${5 - apiSeedCount} generated by AI. Always 5 colors. Varies on regenerate.`}
+                        {paletteMethod === 'dominant' &&
+                          'Ranks colors by pixel coverage — most frequent colors first. Deterministic.'}
+                        {paletteMethod === 'generative' &&
+                          'Runs k-means 24× on random pixel subsets, picks the run with best color spread. Varies on regenerate.'}
+                        {paletteMethod === 'api' &&
+                          `Colormind AI palette — ${apiSeedCount} color${apiSeedCount !== 1 ? 's' : ''} locked from image, ${5 - apiSeedCount} generated by AI. Always 5 colors. Varies on regenerate.`}
                       </p>
                       {(paletteMethod === 'generative' || paletteMethod === 'api') && imageSrc && (
                         <button
@@ -1164,70 +1255,110 @@ const App = () => {
                         <label className="text-xs font-medium text-slate-600 w-20 shrink-0">Model</label>
                         <select
                           value={apiModel}
-                          onChange={e => setApiModel(e.target.value)}
+                          onChange={(e) => setApiModel(e.target.value)}
                           className="flex-1 text-xs bg-slate-50 border border-slate-200 rounded px-2 py-1 text-slate-700 cursor-pointer"
                         >
-                          {apiModels.map(m => (
-                            <option key={m} value={m}>{m}</option>
+                          {apiModels.map((m) => (
+                            <option key={m} value={m}>
+                              {m}
+                            </option>
                           ))}
                         </select>
                       </div>
                     )}
                     <div className="flex bg-slate-100 p-1 rounded-lg">
-                      <button onClick={() => setPaletteFitMode('cosine')}
-                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${paletteFitMode === 'cosine' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                      <button
+                        onClick={() => setPaletteFitMode('cosine')}
+                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${paletteFitMode === 'cosine' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                      >
                         Cosine
                       </button>
-                      <button onClick={() => setPaletteFitMode('poly')}
-                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${paletteFitMode === 'poly' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                      <button
+                        onClick={() => setPaletteFitMode('poly')}
+                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${paletteFitMode === 'poly' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                      >
                         Poly
                       </button>
-                      <button onClick={() => setPaletteFitMode('linear')}
-                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${paletteFitMode === 'linear' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                      <button
+                        onClick={() => setPaletteFitMode('linear')}
+                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${paletteFitMode === 'linear' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                      >
                         Linear
                       </button>
-                      <button onClick={() => setPaletteFitMode('steps')}
-                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${paletteFitMode === 'steps' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                      <button
+                        onClick={() => setPaletteFitMode('steps')}
+                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${paletteFitMode === 'steps' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                      >
                         Steps
                       </button>
-                      <button onClick={() => setPaletteFitMode('catmull')}
-                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${paletteFitMode === 'catmull' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                      <button
+                        onClick={() => setPaletteFitMode('catmull')}
+                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${paletteFitMode === 'catmull' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                      >
                         Catmull
                       </button>
                     </div>
                     <p className="text-[10px] text-slate-400 leading-relaxed">
-                      {paletteFitMode === 'cosine' && 'Fits a + b·cos(2π(ct+d)) per channel. Smooth, loops perfectly with locked freq. Best for organic gradients.'}
-                      {paletteFitMode === 'poly' && 'Least-squares polynomial through the colors. Can overshoot — use clamp. Higher degree = more flexibility, more risk of artifacts.'}
-                      {paletteFitMode === 'linear' && 'Direct mix() between color stops. Exact colors, no overshoot. Weight dominance stretches dominant colors across more t-range.'}
-                      {paletteFitMode === 'steps' && 'Hard cuts between colors. Each color occupies t-range proportional to its area. Good for quantized / posterized looks.'}
-                      {paletteFitMode === 'catmull' && 'Catmull-Rom spline through colors. Smooth like cosine but passes exactly through each color. Weight dominance adjusts stop spacing.'}
+                      {paletteFitMode === 'cosine' &&
+                        'Fits a + b·cos(2π(ct+d)) per channel. Smooth, loops perfectly with locked freq. Best for organic gradients.'}
+                      {paletteFitMode === 'poly' &&
+                        'Least-squares polynomial through the colors. Can overshoot — use clamp. Higher degree = more flexibility, more risk of artifacts.'}
+                      {paletteFitMode === 'linear' &&
+                        'Direct mix() between color stops. Exact colors, no overshoot. Weight dominance stretches dominant colors across more t-range.'}
+                      {paletteFitMode === 'steps' &&
+                        'Hard cuts between colors. Each color occupies t-range proportional to its area. Good for quantized / posterized looks.'}
+                      {paletteFitMode === 'catmull' &&
+                        'Catmull-Rom spline through colors. Smooth like cosine but passes exactly through each color. Weight dominance adjusts stop spacing.'}
                     </p>
                     {paletteFitMode === 'poly' && (
                       <div className="flex items-center gap-4">
                         <label className="text-xs font-medium text-slate-600 w-16">Degree</label>
-                        <input type="range" min="1" max="6" step="1" value={degree}
+                        <input
+                          type="range"
+                          min="1"
+                          max="6"
+                          step="1"
+                          value={degree}
                           onChange={(e) => setDegree(parseInt(e.target.value))}
                           className="flex-1 accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
                         />
-                        <span className="text-xs font-mono bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded">{degree}</span>
+                        <span className="text-xs font-mono bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded">
+                          {degree}
+                        </span>
                       </div>
                     )}
-                    {paletteMethod !== 'api' && <div className="flex items-center gap-4">
-                      <label className="text-xs font-medium text-slate-600 w-20">Colors</label>
-                      <input type="range" min="3" max="12" step="1" value={colorCount}
-                        onChange={(e) => setColorCount(parseInt(e.target.value))}
-                        className="flex-1 accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
-                      />
-                      <span className="text-xs font-mono bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded">{colorCount}</span>
-                    </div>}
+                    {paletteMethod !== 'api' && (
+                      <div className="flex items-center gap-4">
+                        <label className="text-xs font-medium text-slate-600 w-20">Colors</label>
+                        <input
+                          type="range"
+                          min="3"
+                          max="12"
+                          step="1"
+                          value={colorCount}
+                          onChange={(e) => setColorCount(parseInt(e.target.value))}
+                          className="flex-1 accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+                        />
+                        <span className="text-xs font-mono bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded">
+                          {colorCount}
+                        </span>
+                      </div>
+                    )}
                     {paletteMethod === 'api' && (
                       <div className="flex items-center gap-4">
                         <label className="text-xs font-medium text-slate-600 w-20">Img seeds</label>
-                        <input type="range" min="1" max="4" step="1" value={apiSeedCount}
+                        <input
+                          type="range"
+                          min="1"
+                          max="4"
+                          step="1"
+                          value={apiSeedCount}
                           onChange={(e) => setApiSeedCount(parseInt(e.target.value))}
                           className="flex-1 accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
                         />
-                        <span className="text-xs font-mono bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded">{apiSeedCount} / 5</span>
+                        <span className="text-xs font-mono bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded">
+                          {apiSeedCount} / 5
+                        </span>
                       </div>
                     )}
                     {paletteFitMode === 'cosine' && (
@@ -1237,9 +1368,13 @@ const App = () => {
                           onClick={() => setLockFrequency((v) => !v)}
                           className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${lockFrequency ? 'bg-indigo-500' : 'bg-slate-300'}`}
                         >
-                          <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${lockFrequency ? 'translate-x-4' : 'translate-x-1'}`} />
+                          <span
+                            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${lockFrequency ? 'translate-x-4' : 'translate-x-1'}`}
+                          />
                         </button>
-                        <span className="text-xs text-slate-400">{lockFrequency ? 'Integer c (perfect loop)' : 'Free float c'}</span>
+                        <span className="text-xs text-slate-400">
+                          {lockFrequency ? 'Integer c (perfect loop)' : 'Free float c'}
+                        </span>
                       </div>
                     )}
                     {(paletteFitMode === 'linear' || paletteFitMode === 'catmull') && paletteMethod !== 'api' && (
@@ -1249,7 +1384,9 @@ const App = () => {
                           onClick={() => setWeightDominance((v) => !v)}
                           className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${weightDominance ? 'bg-indigo-500' : 'bg-slate-300'}`}
                         >
-                          <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${weightDominance ? 'translate-x-4' : 'translate-x-1'}`} />
+                          <span
+                            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${weightDominance ? 'translate-x-4' : 'translate-x-1'}`}
+                          />
                         </button>
                         <span className="text-xs text-slate-400">{weightDominance ? 't ∝ area' : 'Uniform t'}</span>
                       </div>
@@ -1258,16 +1395,22 @@ const App = () => {
                     {/* Extracted color swatches — always mounted so refs are valid */}
                     <div className={`space-y-1 ${extractedColors.length === 0 ? 'hidden' : ''}`}>
                       <div className="flex items-center justify-between">
-                        <h4 className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Extracted Points</h4>
-                        <button onClick={shuffleColors}
-                          className="flex items-center gap-1 text-[10px] bg-blue-500 hover:bg-blue-600 text-white px-2 py-0.5 rounded transition-colors">
+                        <h4 className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">
+                          Extracted Points
+                        </h4>
+                        <button
+                          onClick={shuffleColors}
+                          className="flex items-center gap-1 text-[10px] bg-blue-500 hover:bg-blue-600 text-white px-2 py-0.5 rounded transition-colors"
+                        >
                           <Shuffle className="w-3 h-3" /> Shuffle
                         </button>
                       </div>
                       <div className="rounded overflow-hidden border border-slate-200 h-8">
                         <canvas ref={paletteSwatchRef} width={500} height={32} className="w-full h-full" />
                       </div>
-                      <h4 className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide pt-1">Fitted Gradient</h4>
+                      <h4 className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide pt-1">
+                        Fitted Gradient
+                      </h4>
                       <div className="rounded overflow-hidden border border-slate-200 h-8">
                         <canvas ref={paletteGradientRef} width={500} height={32} className="w-full h-full" />
                       </div>
