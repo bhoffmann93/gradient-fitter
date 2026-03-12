@@ -1,6 +1,6 @@
 import React from 'react';
 import { extractColors } from 'extract-colors';
-import { Upload, Activity, Code, Zap, AlertCircle, MousePointer2, Eye, RefreshCw, Sliders, Palette } from 'lucide-react';
+import { Upload, Activity, Code, Zap, AlertCircle, MousePointer2, Eye, RefreshCw, Sliders, Palette, Shuffle } from 'lucide-react';
 
 const App = () => {
   const [imageSrc, setImageSrc] = React.useState(null);
@@ -17,10 +17,14 @@ const App = () => {
   const [colorCount, setColorCount] = React.useState(7);
   const [lockFrequency, setLockFrequency] = React.useState(true);
   const [extractedColors, setExtractedColors] = React.useState([]);
-  const [paletteMethod, setPaletteMethod] = React.useState('dominant'); // 'dominant' | 'generative'
+  const [paletteMethod, setPaletteMethod] = React.useState('dominant'); // 'dominant' | 'generative' | 'api'
   const [paletteFitMode, setPaletteFitMode] = React.useState('cosine'); // 'cosine' | 'poly'
   // Holds the last fitted result for palette mode so canvas effects can redraw after commit
   const [paletteDrawData, setPaletteDrawData] = React.useState(null);
+  // Colormind API
+  const [apiModel, setApiModel] = React.useState('default');
+  const [apiModels, setApiModels] = React.useState(['default', 'ui']);
+  const apiSeedsRef = React.useRef(null); // cached seeds so regenerate only re-POSTs
   const paletteGradientRef = React.useRef(null);
   const paletteSwatchRef = React.useRef(null);
 
@@ -337,10 +341,8 @@ const App = () => {
       const result = kmeans(inits);
       allRuns.push({ result, score: score(result) });
     }
-    // Sort by score, randomly pick from top 5 so regenerate gives visible variety
-    allRuns.sort((a, b) => b.score - a.score);
-    const topN = allRuns.slice(0, Math.min(5, allRuns.length));
-    return topN[Math.floor(Math.random() * topN.length)].result;
+    // Return the best-scoring run (variety comes from random pixel sampling upstream)
+    return allRuns.reduce((best, r) => r.score > best.score ? r : best).result;
   };
 
   // --- Palette Extraction & Fitting ---
@@ -374,15 +376,38 @@ const App = () => {
           r: c.red / 255, g: c.green / 255, b: c.blue / 255,
           lum: 0.299 * c.red + 0.587 * c.green + 0.114 * c.blue,
         }));
+      } else if (paletteMethod === 'api') {
+        // Extract seeds from image only if we don't have them yet (new image / first run)
+        if (!apiSeedsRef.current) {
+          const seedRaw = await extractColors(imageData, { pixels: 5000, distance: 0.2 });
+          const seedCount = Math.min(seedRaw.length, 4); // always leave ≥1 "N"
+          apiSeedsRef.current = seedRaw.slice(0, seedCount).map(c => [c.red, c.green, c.blue]);
+        }
+        const input = [...apiSeedsRef.current, ...Array(5 - apiSeedsRef.current.length).fill('N')];
+        const res = await fetch('http://colormind.io/api/', {
+          method: 'POST',
+          body: JSON.stringify({ model: apiModel, input }),
+        });
+        if (!res.ok) throw new Error('Colormind API error ' + res.status);
+        const json = await res.json();
+        if (!json.result) throw new Error('Unexpected Colormind response');
+        withLuminance = json.result.map(([r, g, b]) => ({
+          r: r / 255, g: g / 255, b: b / 255,
+          lum: 0.299 * r + 0.587 * g + 0.114 * b,
+        }));
       } else {
-        // Generative k-means: many random inits, best perceptual spread wins
+        // Generative: randomly sample a different pixel subset each call so
+        // each regenerate emphasises different image regions (colormind approach)
         const data = imageData.data;
+        const totalPixels = w * h;
+        const sampleSize = Math.min(3000, totalPixels);
         const pixels = [];
-        const step = Math.max(1, Math.floor(w * h / 4000));
-        for (let i = 0; i < w * h; i += step) {
-          const idx = i * 4;
-          if (data[idx + 3] > 50)
-            pixels.push([data[idx], data[idx + 1], data[idx + 2]]);
+        const indices = Array.from({ length: totalPixels }, (_, i) => i);
+        for (let i = 0; i < sampleSize; i++) {
+          const j = i + Math.floor(Math.random() * (totalPixels - i));
+          [indices[i], indices[j]] = [indices[j], indices[i]];
+          const idx = indices[i] * 4;
+          if (data[idx + 3] > 50) pixels.push([data[idx], data[idx + 1], data[idx + 2]]);
         }
         if (pixels.length < colorCount) throw new Error('Not enough pixels to sample.');
         const centroids = generativeKMeans(pixels, colorCount);
@@ -402,7 +427,7 @@ const App = () => {
         ? solveCosineParams(withLuminance, solverSteps, lockFrequency)
         : fitPolynomial(withLuminance, degree);
       setCoefficients(primaryResult);
-      setGlslCode(buildGLSL(primaryResult, paletteFitMode));
+      setGlslCode(buildGLSL(primaryResult, paletteFitMode) + '\n\n' + buildColorGLSL(withLuminance));
       drawGraph(withLuminance, primaryResult, paletteFitMode);
       renderGradientPreview(primaryResult, paletteFitMode);
       // Defer swatch/gradient canvas drawing to after React commits the DOM
@@ -413,6 +438,20 @@ const App = () => {
       setError(e.message || 'Error during palette extraction');
       setStatus('error');
     }
+  };
+
+  const shuffleColors = () => {
+    if (extractedColors.length === 0) return;
+    const shuffled = [...extractedColors].sort(() => Math.random() - 0.5);
+    setExtractedColors(shuffled);
+    const primaryResult = paletteFitMode === 'cosine'
+      ? solveCosineParams(shuffled, solverSteps, lockFrequency)
+      : fitPolynomial(shuffled, degree);
+    setCoefficients(primaryResult);
+    setGlslCode(buildGLSL(primaryResult, paletteFitMode) + '\n\n' + buildColorGLSL(shuffled));
+    drawGraph(shuffled, primaryResult, paletteFitMode);
+    renderGradientPreview(primaryResult, paletteFitMode);
+    setPaletteDrawData({ colors: shuffled, result: primaryResult, mode: paletteFitMode });
   };
 
   const drawSwatches = (colors) => {
@@ -516,6 +555,20 @@ const App = () => {
   };
 
   // --- GLSL Generation ---
+  const buildColorGLSL = (colors) => {
+    const fmt = (n) => n.toFixed(3);
+    let code = `// Extracted colors (luminance sorted)\n`;
+    colors.forEach((c, i) => {
+      code += `vec3 color${i + 1} = vec3(${fmt(c.r)}, ${fmt(c.g)}, ${fmt(c.b)});\n`;
+    });
+    code += `\n// Array form\nvec3 palette[${colors.length}] = vec3[](\n`;
+    code += colors.map((c, i) =>
+      `    vec3(${fmt(c.r)}, ${fmt(c.g)}, ${fmt(c.b)})${i < colors.length - 1 ? ',' : ''}`
+    ).join('\n');
+    code += `\n);`;
+    return code;
+  };
+
   const buildGLSL = (coeffs, mode) => {
     const fmt = (n) => {
       let s = n.toFixed(3);
@@ -737,6 +790,7 @@ const App = () => {
         const ctx = canvasRef.current.getContext('2d');
         ctx.drawImage(img, 0, 0, w, h);
         originalDataRef.current = ctx.getImageData(0, 0, w, h);
+        apiSeedsRef.current = null; // reset so API mode re-extracts seeds for new image
 
         applyImageFilters();
       };
@@ -761,6 +815,15 @@ const App = () => {
     drawSwatches(paletteDrawData.colors);
     drawPaletteGradient(paletteDrawData.result, paletteDrawData.mode);
   }, [paletteDrawData]);
+
+  // Fetch available Colormind models when API mode is selected
+  React.useEffect(() => {
+    if (paletteMethod !== 'api') return;
+    fetch('http://colormind.io/list/')
+      .then(r => r.json())
+      .then(data => { if (data.result?.length) setApiModels(data.result); })
+      .catch(() => {}); // silently keep defaults on failure
+  }, [paletteMethod]);
 
   // Switch modes: re-run the appropriate pipeline
   React.useEffect(() => {
@@ -923,14 +986,18 @@ const App = () => {
                         className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${paletteMethod === 'generative' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
                         Generative
                       </button>
+                      <button onClick={() => setPaletteMethod('api')}
+                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${paletteMethod === 'api' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                        API
+                      </button>
                     </div>
                     <div className="flex items-center justify-between">
                       <p className="text-[10px] text-slate-400 leading-relaxed">
-                        {paletteMethod === 'dominant'
-                          ? 'Most frequent colors by pixel area.'
-                          : 'Runs k-means 24×, picks the palette with best perceptual spread and luminance range.'}
+                        {paletteMethod === 'dominant' && 'Most frequent colors by pixel area.'}
+                        {paletteMethod === 'generative' && 'Random pixel sample → k-means 24×, best spread wins.'}
+                        {paletteMethod === 'api' && 'Seeds up to 4 image colors into Colormind, always returns 5.'}
                       </p>
-                      {paletteMethod === 'generative' && imageSrc && (
+                      {(paletteMethod === 'generative' || paletteMethod === 'api') && imageSrc && (
                         <button
                           onClick={performPaletteFit}
                           className="flex items-center gap-1 text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1 rounded ml-3 shrink-0"
@@ -939,6 +1006,20 @@ const App = () => {
                         </button>
                       )}
                     </div>
+                    {paletteMethod === 'api' && (
+                      <div className="flex items-center gap-3">
+                        <label className="text-xs font-medium text-slate-600 w-20 shrink-0">Model</label>
+                        <select
+                          value={apiModel}
+                          onChange={e => setApiModel(e.target.value)}
+                          className="flex-1 text-xs bg-slate-50 border border-slate-200 rounded px-2 py-1 text-slate-700 cursor-pointer"
+                        >
+                          {apiModels.map(m => (
+                            <option key={m} value={m}>{m}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                     <div className="flex bg-slate-100 p-1 rounded-lg">
                       <button onClick={() => setPaletteFitMode('cosine')}
                         className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${paletteFitMode === 'cosine' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
@@ -959,14 +1040,14 @@ const App = () => {
                         <span className="text-xs font-mono bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded">{degree}</span>
                       </div>
                     )}
-                    <div className="flex items-center gap-4">
+                    {paletteMethod !== 'api' && <div className="flex items-center gap-4">
                       <label className="text-xs font-medium text-slate-600 w-20">Colors</label>
                       <input type="range" min="3" max="12" step="1" value={colorCount}
                         onChange={(e) => setColorCount(parseInt(e.target.value))}
                         className="flex-1 accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
                       />
                       <span className="text-xs font-mono bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded">{colorCount}</span>
-                    </div>
+                    </div>}
                     {paletteFitMode === 'cosine' && (
                       <div className="flex items-center gap-3">
                         <label className="text-xs font-medium text-slate-600 w-20">Lock freq</label>
@@ -982,7 +1063,13 @@ const App = () => {
 
                     {/* Extracted color swatches — always mounted so refs are valid */}
                     <div className={`space-y-1 ${extractedColors.length === 0 ? 'hidden' : ''}`}>
-                      <h4 className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Extracted Points</h4>
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Extracted Points</h4>
+                        <button onClick={shuffleColors}
+                          className="flex items-center gap-1 text-[10px] bg-blue-500 hover:bg-blue-600 text-white px-2 py-0.5 rounded transition-colors">
+                          <Shuffle className="w-3 h-3" /> Shuffle
+                        </button>
+                      </div>
                       <div className="rounded overflow-hidden border border-slate-200 h-8">
                         <canvas ref={paletteSwatchRef} width={500} height={32} className="w-full h-full" />
                       </div>
