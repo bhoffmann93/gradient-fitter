@@ -648,29 +648,61 @@ const App = () => {
 
     if (mode === 'steps') {
       const { colors, tBoundaries } = coeffs;
-      let code = `// Stepped Palette (area-weighted boundaries)\nvec3 palette(float t) {\n`;
-      for (let i = 0; i < colors.length - 1; i++) {
-        const c = colors[i];
-        code += `    if (t < ${fmt(tBoundaries[i])}) return vec3(${fmt(c.r)}, ${fmt(c.g)}, ${fmt(c.b)});\n`;
+      const n = colors.length;
+      const isUniform = tBoundaries.every((b, i) => Math.abs(b - (i + 1) / n) < 0.001);
+      let code = isUniform
+        ? `// Stepped Palette (uniform)\nvec3 palette(float t) {\n`
+        : `// Stepped Palette (weighted) — stops.xyz = color, stops.w = upper boundary\nvec3 palette(float t) {\n`;
+      if (isUniform) {
+        code += `    vec3 colors[${n}] = vec3[](\n`;
+        code += colors.map((c, i) =>
+          `        vec3(${fmt(c.r)}, ${fmt(c.g)}, ${fmt(c.b)})${i < n - 1 ? ',' : ''}`
+        ).join('\n');
+        code += `\n    );\n`;
+        code += `    return colors[clamp(int(t * ${n}.0), 0, ${n - 1})];\n}`;
+      } else {
+        code += `    vec4 stops[${n}] = vec4[](\n`;
+        code += colors.map((c, i) => {
+          const boundary = i < tBoundaries.length ? tBoundaries[i] : 1.0;
+          return `        vec4(${fmt(c.r)}, ${fmt(c.g)}, ${fmt(c.b)}, ${fmt(boundary)})${i < n - 1 ? ',' : ''}`;
+        }).join('\n');
+        code += `\n    );\n`;
+        for (let i = 0; i < n - 1; i++) {
+          code += `    if (t < stops[${i}].w) return stops[${i}].rgb;\n`;
+        }
+        code += `    return stops[${n - 1}].rgb;\n}`;
       }
-      const last = colors[colors.length - 1];
-      code += `    return vec3(${fmt(last.r)}, ${fmt(last.g)}, ${fmt(last.b)});\n}`;
       return code;
     }
 
     if (mode === 'linear') {
       const { colors, tValues } = coeffs;
-      let code = `// Linear Interpolated Palette\nvec3 palette(float t) {\n`;
-      for (let i = 0; i < colors.length - 1; i++) {
-        const c0 = colors[i],
-          c1 = colors[i + 1];
-        const t0 = tValues[i],
-          t1 = tValues[i + 1];
-        const range = Math.max(0.00001, t1 - t0).toFixed(5);
-        code += `    if (t < ${fmt(t1)}) return mix(\n        vec3(${fmt(c0.r)},${fmt(c0.g)},${fmt(c0.b)}),\n        vec3(${fmt(c1.r)},${fmt(c1.g)},${fmt(c1.b)}),\n        (t - ${fmt(t0)}) / ${range});\n`;
+      const n = colors.length;
+      const isUniform = tValues.every((tv, i) => Math.abs(tv - i / (n - 1)) < 0.001);
+      let code = isUniform
+        ? `// Linear Palette (uniform)\nvec3 palette(float t) {\n`
+        : `// Linear Palette (weighted) — stops.xyz = color, stops.w = t-position\nvec3 palette(float t) {\n`;
+      if (isUniform) {
+        code += `    vec3 colors[${n}] = vec3[](\n`;
+        code += colors.map((c, i) =>
+          `        vec3(${fmt(c.r)}, ${fmt(c.g)}, ${fmt(c.b)})${i < n - 1 ? ',' : ''}`
+        ).join('\n');
+        code += `\n    );\n`;
+        code += `    float f = clamp(t, 0.0, 1.0) * ${n - 1}.0;\n`;
+        code += `    int i = clamp(int(f), 0, ${n - 2});\n`;
+        code += `    return mix(colors[i], colors[i + 1], fract(f));\n}`;
+      } else {
+        code += `    vec4 stops[${n}] = vec4[](\n`;
+        code += colors.map((c, i) =>
+          `        vec4(${fmt(c.r)}, ${fmt(c.g)}, ${fmt(c.b)}, ${fmt(tValues[i])})${i < n - 1 ? ',' : ''}`
+        ).join('\n');
+        code += `\n    );\n`;
+        for (let i = 0; i < n - 1; i++) {
+          code += `    if (t < stops[${i + 1}].w) return mix(stops[${i}].rgb, stops[${i + 1}].rgb,\n`;
+          code += `        (t - stops[${i}].w) / (stops[${i + 1}].w - stops[${i}].w));\n`;
+        }
+        code += `    return stops[${n - 1}].rgb;\n}`;
       }
-      const last = colors[colors.length - 1];
-      code += `    return vec3(${fmt(last.r)}, ${fmt(last.g)}, ${fmt(last.b)});\n}`;
       return code;
     }
 
@@ -678,7 +710,9 @@ const App = () => {
       const { colors, tValues } = coeffs;
       const n = colors.length;
       const isUniform = tValues.every((tv, i) => Math.abs(tv - i / (n - 1)) < 0.001);
-      let code = `// Catmull-Rom Palette\n`;
+      let code = isUniform
+        ? `// Catmull-Rom Palette (uniform)\n`
+        : `// Catmull-Rom Palette (weighted) — stops.xyz = color, stops.w = t-position\n`;
       code += `vec3 catmullRom(vec3 p0, vec3 p1, vec3 p2, vec3 p3, float t) {\n`;
       code += `    float t2 = t * t;\n    float t3 = t2 * t;\n`;
       code += `    float b1 = -t3 + 2.0 * t2 - t;\n`;
@@ -687,30 +721,37 @@ const App = () => {
       code += `    float b4 = t3 - t2;\n`;
       code += `    return 0.5 * (b1 * p0 + b2 * p1 + b3 * p2 + b4 * p3);\n}\n\n`;
       code += `vec3 palette(float t) {\n`;
-      code += `    vec3 colors[${n}] = vec3[](\n`;
-      code += colors
-        .map((c, i) => `        vec3(${fmt(c.r)}, ${fmt(c.g)}, ${fmt(c.b)})${i < n - 1 ? ',' : ''}`)
-        .join('\n');
-      code += `\n    );\n`;
       if (isUniform) {
+        code += `    vec3 colors[${n}] = vec3[](\n`;
+        code += colors.map((c, i) =>
+          `        vec3(${fmt(c.r)}, ${fmt(c.g)}, ${fmt(c.b)})${i < n - 1 ? ',' : ''}`
+        ).join('\n');
+        code += `\n    );\n`;
         code += `    float f = clamp(t, 0.0, 1.0) * ${n - 1}.0;\n`;
         code += `    int i = clamp(int(f), 0, ${n - 2});\n`;
         code += `    float localT = fract(f);\n`;
+        code += `    vec3 p0 = colors[max(i - 1, 0)];\n`;
+        code += `    vec3 p1 = colors[i];\n`;
+        code += `    vec3 p2 = colors[min(i + 1, ${n - 1})];\n`;
+        code += `    vec3 p3 = colors[min(i + 2, ${n - 1})];\n`;
       } else {
+        code += `    vec4 stops[${n}] = vec4[](\n`;
+        code += colors.map((c, i) =>
+          `        vec4(${fmt(c.r)}, ${fmt(c.g)}, ${fmt(c.b)}, ${fmt(tValues[i])})${i < n - 1 ? ',' : ''}`
+        ).join('\n');
+        code += `\n    );\n`;
         code += `    int i = ${n - 2}; float localT = 1.0;\n`;
         for (let j = 0; j < n - 1; j++) {
-          const t0 = tValues[j].toFixed(5),
-            t1 = tValues[j + 1].toFixed(5);
           const range = Math.max(0.00001, tValues[j + 1] - tValues[j]).toFixed(5);
           const cond = j === 0 ? `if` : j === n - 2 ? `else` : `else if`;
-          const guard = j === n - 2 ? `` : ` (t < ${t1})`;
-          code += `    ${cond}${guard} { i = ${j}; localT = clamp((t - ${t0}) / ${range}, 0.0, 1.0); }\n`;
+          const guard = j === n - 2 ? `` : ` (t < stops[${j + 1}].w)`;
+          code += `    ${cond}${guard} { i = ${j}; localT = clamp((t - stops[${j}].w) / ${range}, 0.0, 1.0); }\n`;
         }
+        code += `    vec3 p0 = stops[max(i - 1, 0)].rgb;\n`;
+        code += `    vec3 p1 = stops[i].rgb;\n`;
+        code += `    vec3 p2 = stops[min(i + 1, ${n - 1})].rgb;\n`;
+        code += `    vec3 p3 = stops[min(i + 2, ${n - 1})].rgb;\n`;
       }
-      code += `    vec3 p0 = colors[max(i - 1, 0)];\n`;
-      code += `    vec3 p1 = colors[i];\n`;
-      code += `    vec3 p2 = colors[min(i + 1, ${n - 1})];\n`;
-      code += `    vec3 p3 = colors[min(i + 2, ${n - 1})];\n`;
       code += `    return catmullRom(p0, p1, p2, p3, localT);\n}`;
       return code;
     }
@@ -1054,7 +1095,7 @@ const App = () => {
             <Code className="w-8 h-8 text-indigo-600" />
             Gradient-to-Shader Fitter
           </h1>
-          <p className="text-slate-500 mt-2">Convert images to math. Line sampling or dominant palette extraction.</p>
+          <p className="text-slate-500 mt-1 text-sm">Convert images to GLSL gradient functions.</p>
 
           {/* Top-level mode selector */}
           <div className="flex bg-slate-200 p-1 rounded-xl mt-4 w-fit gap-1">
@@ -1101,11 +1142,12 @@ const App = () => {
                 </label>
               </div>
 
-              <div className="relative flex justify-center items-center bg-slate-100 rounded-lg border border-slate-200 overflow-hidden min-h-[200px] select-none">
+              <div className="relative flex justify-center items-center bg-slate-50 rounded-lg border-2 border-dashed border-slate-200 overflow-hidden min-h-[200px] select-none">
                 {!imageSrc && (
-                  <div className="text-slate-400 flex flex-col items-center">
-                    <Upload className="w-8 h-8 mb-2 opacity-50" />
-                    No Image
+                  <div className="text-slate-400 flex flex-col items-center gap-2 pointer-events-none">
+                    <Upload className="w-10 h-10 opacity-30" />
+                    <span className="text-sm font-medium">Upload an image</span>
+                    <span className="text-xs opacity-60">PNG · JPG · WebP</span>
                   </div>
                 )}
                 <canvas ref={canvasRef} className="hidden" />
@@ -1119,8 +1161,11 @@ const App = () => {
                 />
               </div>
 
-              {/* Settings */}
-              <div className="mt-6 space-y-6">
+            </div>
+
+            {/* Settings */}
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+              <div className="space-y-5">
                 {/* Fit mode toggle — line mode only */}
                 {appMode === 'line' && (
                   <div className="space-y-3">
@@ -1211,7 +1256,11 @@ const App = () => {
                     <h3 className="text-xs font-semibold text-slate-500 flex items-center gap-2">
                       <Palette className="w-3 h-3" /> Palette Settings
                     </h3>
-                    {/* Method toggle */}
+                    {/* Extraction group */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Extraction</span>
+                      <div className="flex-1 border-t border-slate-100" />
+                    </div>
                     <div className="flex bg-slate-100 p-1 rounded-lg">
                       <button
                         onClick={() => setPaletteMethod('dominant')}
@@ -1251,21 +1300,35 @@ const App = () => {
                       )}
                     </div>
                     {paletteMethod === 'api' && (
-                      <div className="flex items-center gap-3">
-                        <label className="text-xs font-medium text-slate-600 w-20 shrink-0">Model</label>
-                        <select
-                          value={apiModel}
-                          onChange={(e) => setApiModel(e.target.value)}
-                          className="flex-1 text-xs bg-slate-50 border border-slate-200 rounded px-2 py-1 text-slate-700 cursor-pointer"
-                        >
-                          {apiModels.map((m) => (
-                            <option key={m} value={m}>
-                              {m}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                      <>
+                        <div className="flex items-center gap-3">
+                          <label className="text-xs font-medium text-slate-600 w-20 shrink-0">Model</label>
+                          <select
+                            value={apiModel}
+                            onChange={(e) => setApiModel(e.target.value)}
+                            className="flex-1 text-xs bg-slate-50 border border-slate-200 rounded px-2 py-1 text-slate-700 cursor-pointer"
+                          >
+                            {apiModels.map((m) => (
+                              <option key={m} value={m}>{m}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <label className="text-xs font-medium text-slate-600 w-20">Img seeds</label>
+                          <input
+                            type="range" min="1" max="4" step="1" value={apiSeedCount}
+                            onChange={(e) => setApiSeedCount(parseInt(e.target.value))}
+                            className="flex-1 accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+                          />
+                          <span className="text-xs font-mono bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded">{apiSeedCount} / 5</span>
+                        </div>
+                      </>
                     )}
+                    {/* Fit group */}
+                    <div className="flex items-center gap-2 pt-1">
+                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Fit Function</span>
+                      <div className="flex-1 border-t border-slate-100" />
+                    </div>
                     <div className="flex bg-slate-100 p-1 rounded-lg">
                       <button
                         onClick={() => setPaletteFitMode('cosine')}
@@ -1344,23 +1407,6 @@ const App = () => {
                         </span>
                       </div>
                     )}
-                    {paletteMethod === 'api' && (
-                      <div className="flex items-center gap-4">
-                        <label className="text-xs font-medium text-slate-600 w-20">Img seeds</label>
-                        <input
-                          type="range"
-                          min="1"
-                          max="4"
-                          step="1"
-                          value={apiSeedCount}
-                          onChange={(e) => setApiSeedCount(parseInt(e.target.value))}
-                          className="flex-1 accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
-                        />
-                        <span className="text-xs font-mono bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded">
-                          {apiSeedCount} / 5
-                        </span>
-                      </div>
-                    )}
                     {paletteFitMode === 'cosine' && (
                       <div className="flex items-center gap-3">
                         <label className="text-xs font-medium text-slate-600 w-20">Lock freq</label>
@@ -1405,14 +1451,14 @@ const App = () => {
                           <Shuffle className="w-3 h-3" /> Shuffle
                         </button>
                       </div>
-                      <div className="rounded overflow-hidden border border-slate-200 h-8">
-                        <canvas ref={paletteSwatchRef} width={500} height={32} className="w-full h-full" />
+                      <div className="rounded-md overflow-hidden border border-slate-200 h-12">
+                        <canvas ref={paletteSwatchRef} width={500} height={48} className="w-full h-full" />
                       </div>
                       <h4 className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide pt-1">
                         Fitted Gradient
                       </h4>
-                      <div className="rounded overflow-hidden border border-slate-200 h-8">
-                        <canvas ref={paletteGradientRef} width={500} height={32} className="w-full h-full" />
+                      <div className="rounded-md overflow-hidden border border-slate-200 h-12">
+                        <canvas ref={paletteGradientRef} width={500} height={48} className="w-full h-full" />
                       </div>
                     </div>
                   </div>
@@ -1424,7 +1470,7 @@ const App = () => {
 
             <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
               <h2 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                <Activity className="w-4 h-4 text-slate-400" /> Analysis
+                <Activity className="w-4 h-4 text-slate-400" /> RGB Channels
               </h2>
               <div className="w-full h-48 bg-slate-50 rounded border border-slate-100 overflow-hidden mb-4">
                 <canvas ref={graphRef} width={500} height={300} className="w-full h-full" />
@@ -1433,8 +1479,8 @@ const App = () => {
                 <h3 className="text-xs font-semibold text-slate-500 flex items-center gap-2">
                   <Eye className="w-3 h-3" /> Shader Preview
                 </h3>
-                <div className="w-full h-12 bg-slate-100 rounded border border-slate-200 overflow-hidden">
-                  <canvas ref={shaderCanvasRef} width={500} height={50} className="w-full h-full" />
+                <div className="w-full h-20 bg-slate-100 rounded-md border border-slate-200 overflow-hidden">
+                  <canvas ref={shaderCanvasRef} width={500} height={80} className="w-full h-full" />
                 </div>
               </div>
             </div>
