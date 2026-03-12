@@ -1,18 +1,30 @@
 import React from 'react';
-import { Upload, Activity, Code, Zap, AlertCircle, MousePointer2, Eye, RefreshCw, Sliders } from 'lucide-react';
+import { extractColors } from 'extract-colors';
+import { Upload, Activity, Code, Zap, AlertCircle, MousePointer2, Eye, RefreshCw, Sliders, Palette } from 'lucide-react';
 
 const App = () => {
   const [imageSrc, setImageSrc] = React.useState(null);
 
-  // Fitting State
+  // Top-level workflow mode
+  const [appMode, setAppMode] = React.useState('line'); // 'line' | 'palette'
+
+  // Fitting State (line mode)
   const [fitMode, setFitMode] = React.useState('poly'); // 'poly' or 'cosine'
   const [degree, setDegree] = React.useState(3);
-  const [solverSteps, setSolverSteps] = React.useState(5000);
+  const [solverSteps] = React.useState(5000);
+
+  // Palette Mode State
+  const [colorCount, setColorCount] = React.useState(7);
+  const [lockFrequency, setLockFrequency] = React.useState(true);
+  const [extractedColors, setExtractedColors] = React.useState([]);
+  const [paletteMethod, setPaletteMethod] = React.useState('dominant'); // 'dominant' | 'generative'
+  const paletteGradientRef = React.useRef(null);
+  const paletteSwatchRef = React.useRef(null);
 
   // Image Processing State
   const [contrast, setContrast] = React.useState(1.0);
-  const [minLevel, setMinLevel] = React.useState(0); // Black Point (0-255)
-  const [maxLevel, setMaxLevel] = React.useState(255); // White Point (0-255)
+  const [minLevel, setMinLevel] = React.useState(0);
+  const [maxLevel, setMaxLevel] = React.useState(255);
 
   // Results
   const [coefficients, setCoefficients] = React.useState(null);
@@ -26,9 +38,9 @@ const App = () => {
   const [activePoint, setActivePoint] = React.useState(null);
 
   // Refs
-  const originalDataRef = React.useRef(null); // Stores the raw resized original image data
-  const canvasRef = React.useRef(null); // Stores the PROCESSED image used for fitting
-  const uiCanvasRef = React.useRef(null); // Visible canvas
+  const originalDataRef = React.useRef(null);
+  const canvasRef = React.useRef(null);
+  const uiCanvasRef = React.useRef(null);
   const graphRef = React.useRef(null);
   const shaderCanvasRef = React.useRef(null);
 
@@ -67,10 +79,13 @@ const App = () => {
   };
 
   // --- Math Logic: Iterative Solver (Cosine) ---
-  const solveCosineParams = (samples, steps) => {
+  const solveCosineParams = (samples, steps, lockFreq = false) => {
     const solveChannel = (accessor) => {
       let bestParams = { a: 0.5, b: 0.5, c: 1.0, d: 0.0 };
       let bestError = Infinity;
+
+      // When locked, try integer c values 1, 2, 3
+      const cCandidates = lockFreq ? [1, 2, 3] : null;
 
       const calcError = (p) => {
         let err = 0;
@@ -83,22 +98,24 @@ const App = () => {
         return err;
       };
 
-      for (let r = 0; r < 50; r++) {
+      const initialCs = cCandidates || Array.from({ length: 50 }, () => null);
+
+      for (let r = 0; r < (cCandidates ? 3 : 50); r++) {
         const startP = {
-          a: Math.random(),
-          b: Math.random(),
-          c: 0.5 + Math.random() * 3.0,
-          d: Math.random(),
+          a: cCandidates ? 0.5 : Math.random(),
+          b: cCandidates ? 0.3 : Math.random(),
+          c: cCandidates ? cCandidates[r] : 0.5 + Math.random() * 3.0,
+          d: cCandidates ? 0.0 : Math.random(),
         };
 
         let p = { ...startP };
         let err = calcError(p);
         let learningRate = 0.1;
-        for (let i = 0; i < 100; i++) {
+        for (let i = 0; i < 200; i++) {
           const candidate = {
             a: p.a + (Math.random() - 0.5) * learningRate,
             b: p.b + (Math.random() - 0.5) * learningRate,
-            c: p.c + (Math.random() - 0.5) * learningRate,
+            c: lockFreq ? p.c : p.c + (Math.random() - 0.5) * learningRate,
             d: p.d + (Math.random() - 0.5) * learningRate,
           };
           const cErr = calcError(candidate);
@@ -122,7 +139,7 @@ const App = () => {
         const candidate = {
           a: p.a + (Math.random() - 0.5) * lr,
           b: p.b + (Math.random() - 0.5) * lr,
-          c: p.c + (Math.random() - 0.5) * lr * 0.5,
+          c: lockFreq ? p.c : p.c + (Math.random() - 0.5) * lr * 0.5,
           d: p.d + (Math.random() - 0.5) * lr,
         };
         const cErr = calcError(candidate);
@@ -141,9 +158,9 @@ const App = () => {
     };
   };
 
-  // --- Interaction Logic ---
+  // --- Interaction Logic (Line Mode) ---
   const handleMouseDown = (e) => {
-    if (!uiCanvasRef.current || !imageSrc) return;
+    if (!uiCanvasRef.current || !imageSrc || appMode !== 'line') return;
     const rect = uiCanvasRef.current.getBoundingClientRect();
     const mousePxX = e.clientX - rect.left;
     const mousePxY = e.clientY - rect.top;
@@ -176,14 +193,11 @@ const App = () => {
   const handleMouseUp = () => {
     if (activePoint) {
       setActivePoint(null);
-      // Don't re-process image, just re-fit based on new line coords
       performFitting();
     }
   };
 
   // --- Image Processing ---
-
-  // Applies Contrast + Levels to originalDataRef and saves to canvasRef
   const applyImageFilters = () => {
     if (!originalDataRef.current || !canvasRef.current) return;
 
@@ -201,48 +215,221 @@ const App = () => {
     const contrastFactor = contrast;
 
     for (let i = 0; i < src.length; i += 4) {
-      // 1. Normalize [0..1]
       let r = src[i] / 255;
       let g = src[i + 1] / 255;
       let b = src[i + 2] / 255;
 
-      // 2. Contrast (centered around 0.5)
       r = (r - 0.5) * contrastFactor + 0.5;
       g = (g - 0.5) * contrastFactor + 0.5;
       b = (b - 0.5) * contrastFactor + 0.5;
 
-      // 3. Levels (Input Range)
       if (range > 0.001) {
         r = (r - min) / range;
         g = (g - min) / range;
         b = (b - min) / range;
       } else {
-        // Hard threshold if range is 0
         r = r >= min ? 1 : 0;
         g = g >= min ? 1 : 0;
         b = b >= min ? 1 : 0;
       }
 
-      // 4. Clamp and Save
       dest[i] = Math.max(0, Math.min(1, r)) * 255;
       dest[i + 1] = Math.max(0, Math.min(1, g)) * 255;
       dest[i + 2] = Math.max(0, Math.min(1, b)) * 255;
-      dest[i + 3] = src[i + 3]; // Keep alpha
+      dest[i + 3] = src[i + 3];
     }
 
-    // Update Hidden Processing Canvas
     ctx.putImageData(destImageData, 0, 0);
 
-    // Update Visible UI Canvas
     const uiCtx = uiCanvasRef.current.getContext('2d');
     uiCtx.putImageData(destImageData, 0, 0);
 
-    // Trigger fitting on new data
-    performFitting();
+    if (appMode === 'line') {
+      performFitting();
+    } else {
+      performPaletteFit();
+    }
   };
 
-  // --- Main Pipeline ---
+  // --- Generative K-Means (colormind-style) ---
+  // Runs k-means many times with random inits, scores each by perceptual spread, returns best.
+  const generativeKMeans = (pixels, k, runs = 24) => {
+    const dist2 = (a, b) => (a[0]-b[0])**2 + (a[1]-b[1])**2 + (a[2]-b[2])**2;
 
+    const kmeans = (initCentroids) => {
+      let centroids = initCentroids.map(c => [...c]);
+      for (let iter = 0; iter < 20; iter++) {
+        const sums = Array.from({ length: k }, () => [0, 0, 0, 0]); // r,g,b,count
+        for (const px of pixels) {
+          let best = 0, bestD = Infinity;
+          for (let j = 0; j < k; j++) {
+            const d = dist2(px, centroids[j]);
+            if (d < bestD) { bestD = d; best = j; }
+          }
+          sums[best][0] += px[0]; sums[best][1] += px[1];
+          sums[best][2] += px[2]; sums[best][3]++;
+        }
+        let moved = false;
+        for (let j = 0; j < k; j++) {
+          if (sums[j][3] > 0) {
+            const next = [sums[j][0]/sums[j][3], sums[j][1]/sums[j][3], sums[j][2]/sums[j][3]];
+            if (dist2(next, centroids[j]) > 1) moved = true;
+            centroids[j] = next;
+          }
+        }
+        if (!moved) break;
+      }
+      return centroids;
+    };
+
+    // Score = sum of pairwise distances (spread) + luminance range coverage
+    const score = (centroids) => {
+      let spread = 0;
+      for (let i = 0; i < centroids.length; i++)
+        for (let j = i + 1; j < centroids.length; j++)
+          spread += Math.sqrt(dist2(centroids[i], centroids[j]));
+      const lums = centroids.map(c => 0.299*c[0] + 0.587*c[1] + 0.114*c[2]);
+      const lumRange = Math.max(...lums) - Math.min(...lums);
+      return spread + lumRange * 200; // weight luminance range
+    };
+
+    let best = null, bestScore = -Infinity;
+    for (let r = 0; r < runs; r++) {
+      // Random pixel init (k-means++)
+      const inits = [];
+      inits.push(pixels[Math.floor(Math.random() * pixels.length)]);
+      for (let i = 1; i < k; i++) {
+        const weights = pixels.map(px => {
+          const minD = Math.min(...inits.map(c => dist2(px, c)));
+          return minD;
+        });
+        const total = weights.reduce((a, b) => a + b, 0);
+        let rand = Math.random() * total;
+        let chosen = pixels[pixels.length - 1];
+        for (let j = 0; j < pixels.length; j++) {
+          rand -= weights[j];
+          if (rand <= 0) { chosen = pixels[j]; break; }
+        }
+        inits.push(chosen);
+      }
+      const result = kmeans(inits);
+      const s = score(result);
+      if (s > bestScore) { bestScore = s; best = result; }
+    }
+    return best;
+  };
+
+  // --- Palette Extraction & Fitting ---
+  const performPaletteFit = async () => {
+    if (!canvasRef.current || !imageSrc) return;
+
+    setStatus('processing');
+    setError(null);
+
+    try {
+      const w = canvasRef.current.width;
+      const h = canvasRef.current.height;
+      const ctx = canvasRef.current.getContext('2d');
+      const imageData = ctx.getImageData(0, 0, w, h);
+
+      let withLuminance;
+
+      if (paletteMethod === 'dominant') {
+        // extract-colors: frequency-based dominant colors
+        const rawColors = await extractColors(imageData, {
+          pixels: 10000,
+          distance: 0.12,
+          colorValidator: (r, g, b, a = 255) => a > 50,
+          saturationDistance: 0.2,
+          lightnessDistance: 0.2,
+          hueDistance: 0.083,
+        });
+        const topColors = rawColors.slice(0, colorCount);
+        if (topColors.length < 2) throw new Error('Not enough distinct colors found.');
+        withLuminance = topColors.map((c) => ({
+          r: c.red / 255, g: c.green / 255, b: c.blue / 255,
+          lum: 0.299 * c.red + 0.587 * c.green + 0.114 * c.blue,
+        }));
+      } else {
+        // Generative k-means: many random inits, best perceptual spread wins
+        const data = imageData.data;
+        const pixels = [];
+        const step = Math.max(1, Math.floor(w * h / 4000));
+        for (let i = 0; i < w * h; i += step) {
+          const idx = i * 4;
+          if (data[idx + 3] > 50)
+            pixels.push([data[idx], data[idx + 1], data[idx + 2]]);
+        }
+        if (pixels.length < colorCount) throw new Error('Not enough pixels to sample.');
+        const centroids = generativeKMeans(pixels, colorCount);
+        withLuminance = centroids.map((c) => ({
+          r: c[0] / 255, g: c[1] / 255, b: c[2] / 255,
+          lum: 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2],
+        }));
+      }
+
+      withLuminance.sort((a, b) => a.lum - b.lum);
+
+      setExtractedColors(withLuminance);
+      drawSwatches(withLuminance);
+
+      // Fit cosine palette
+      const result = solveCosineParams(withLuminance, solverSteps, lockFrequency);
+      setCoefficients(result);
+      generateGLSL(result, 'cosine');
+      drawGraph(withLuminance, result, 'cosine');
+      renderGradientPreview(result, 'cosine');
+      drawPaletteGradient(result);
+      if (appMode === 'line') drawOverlay();
+      setStatus('done');
+    } catch (e) {
+      console.error(e);
+      setError(e.message || 'Error during palette extraction');
+      setStatus('error');
+    }
+  };
+
+  const drawSwatches = (colors) => {
+    if (!paletteSwatchRef.current) return;
+    const canvas = paletteSwatchRef.current;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width;
+    const h = canvas.height;
+    const sw = w / colors.length;
+
+    ctx.clearRect(0, 0, w, h);
+    colors.forEach((c, i) => {
+      ctx.fillStyle = `rgb(${Math.round(c.r * 255)}, ${Math.round(c.g * 255)}, ${Math.round(c.b * 255)})`;
+      ctx.fillRect(Math.floor(i * sw), 0, Math.ceil(sw), h);
+    });
+  };
+
+  const drawPaletteGradient = (coeffs) => {
+    if (!paletteGradientRef.current) return;
+    const canvas = paletteGradientRef.current;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width;
+    const h = canvas.height;
+    const imageData = ctx.createImageData(w, h);
+
+    for (let x = 0; x < w; x++) {
+      const t = x / (w - 1);
+      const c = evalColor(coeffs, t, 'cosine');
+      const r = Math.max(0, Math.min(1, c.r)) * 255;
+      const g = Math.max(0, Math.min(1, c.g)) * 255;
+      const b = Math.max(0, Math.min(1, c.b)) * 255;
+      for (let y = 0; y < h; y++) {
+        const idx = (y * w + x) * 4;
+        imageData.data[idx] = r;
+        imageData.data[idx + 1] = g;
+        imageData.data[idx + 2] = b;
+        imageData.data[idx + 3] = 255;
+      }
+    }
+    ctx.putImageData(imageData, 0, 0);
+  };
+
+  // --- Line Fitting Pipeline ---
   const performFitting = () => {
     if (!canvasRef.current || !imageSrc) return;
 
@@ -254,9 +441,8 @@ const App = () => {
         const ctx = canvasRef.current.getContext('2d');
         const w = canvasRef.current.width;
         const h = canvasRef.current.height;
-        const data = ctx.getImageData(0, 0, w, h).data; // Reads PROCESSED data
+        const data = ctx.getImageData(0, 0, w, h).data;
 
-        // 1. Sampling
         const samples = [];
         const x1 = p1.x * w;
         const y1 = p1.y * h;
@@ -283,7 +469,6 @@ const App = () => {
 
         let result = null;
 
-        // 2. Fitting
         if (fitMode === 'poly') {
           const N = degree + 1;
           const ATA = Array(N)
@@ -342,15 +527,15 @@ const App = () => {
       for (let i = 1; i <= degree; i++) {
         code += `    vec3 c${i} = vec3(${fmt(coeffs.r[i])}, ${fmt(coeffs.g[i])}, ${fmt(coeffs.b[i])});\n`;
       }
-      code += `\n    return c0`;
+      code += `\n    vec3 color = c0`;
       for (let i = 1; i <= degree; i++) {
         let tStr = i === 2 ? 't*t' : i === 3 ? 't*t*t' : i === 1 ? 't' : `pow(t, ${i}.0)`;
-        code += ` + c${i} * ${tStr}`;
+        code += `\n        + c${i} * ${tStr}`;
       }
-      code += `;\n}`;
+      code += `;\n    return clamp(color, vec3(0.0), vec3(1.0));\n}`;
     } else {
       code = `// Cosine Gradient (Inigo Quilez style)\n// color(t) = a + b * cos( 2*pi * (c*t + d) )\n`;
-      code += `vec3 gradient(float t) {\n`;
+      code += `vec3 palette(float t) {\n`;
       code += `    vec3 a = vec3(${fmt(coeffs.r.a)}, ${fmt(coeffs.g.a)}, ${fmt(coeffs.b.a)});\n`;
       code += `    vec3 b = vec3(${fmt(coeffs.r.b)}, ${fmt(coeffs.g.b)}, ${fmt(coeffs.b.b)});\n`;
       code += `    vec3 c = vec3(${fmt(coeffs.r.c)}, ${fmt(coeffs.g.c)}, ${fmt(coeffs.b.c)});\n`;
@@ -364,9 +549,7 @@ const App = () => {
   // --- Visualization ---
   const evalColor = (coeffs, t, mode) => {
     if (mode === 'poly') {
-      let r = 0,
-        g = 0,
-        b = 0;
+      let r = 0, g = 0, b = 0;
       for (let i = 0; i < coeffs.r.length; i++) {
         const term = Math.pow(t, i);
         r += coeffs.r[i] * term;
@@ -376,11 +559,7 @@ const App = () => {
       return { r, g, b };
     } else {
       const val = (p) => p.a + p.b * Math.cos(2 * Math.PI * (p.c * t + p.d));
-      return {
-        r: val(coeffs.r),
-        g: val(coeffs.g),
-        b: val(coeffs.b),
-      };
+      return { r: val(coeffs.r), g: val(coeffs.g), b: val(coeffs.b) };
     }
   };
 
@@ -394,7 +573,6 @@ const App = () => {
     for (let x = 0; x < w; x++) {
       const t = x / w;
       const c = evalColor(coeffs, t, mode);
-
       const r = Math.max(0, Math.min(1, c.r)) * 255;
       const g = Math.max(0, Math.min(1, c.g)) * 255;
       const b = Math.max(0, Math.min(1, c.b)) * 255;
@@ -418,7 +596,6 @@ const App = () => {
 
     ctx.clearRect(0, 0, W, H);
 
-    // Grid
     ctx.strokeStyle = '#f1f5f9';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -432,7 +609,6 @@ const App = () => {
     const mapY = (val) => H - val * H;
     const mapX = (t) => t * W;
 
-    // Data
     const drawData = (fn, color) => {
       ctx.beginPath();
       ctx.strokeStyle = color;
@@ -451,7 +627,20 @@ const App = () => {
     drawData((s) => s.g, '#22c55e');
     drawData((s) => s.b, '#3b82f6');
 
-    // Fit
+    // Draw sample dots for palette mode
+    if (samples.length <= 12) {
+      ['r', 'g', 'b'].forEach((ch, ci) => {
+        const color = ['#ef4444', '#22c55e', '#3b82f6'][ci];
+        samples.forEach((s, i) => {
+          const t = i / (samples.length - 1);
+          ctx.beginPath();
+          ctx.arc(mapX(t), mapY(s[ch]), 3, 0, Math.PI * 2);
+          ctx.fillStyle = color;
+          ctx.fill();
+        });
+      });
+    }
+
     const drawFit = (channel, color) => {
       ctx.beginPath();
       ctx.strokeStyle = color;
@@ -483,19 +672,14 @@ const App = () => {
     const w = uiCanvasRef.current.width;
     const h = uiCanvasRef.current.height;
 
-    // Note: uiCanvasRef ALREADY contains the processed image via applyImageFilters
-    // We just draw the overlay ON TOP, but clearing it wipes the image.
-    // So we must redraw the processed image from canvasRef first.
     ctx.clearRect(0, 0, w, h);
     ctx.drawImage(canvasRef.current, 0, 0, w, h);
 
     ctx.fillStyle = 'rgba(0,0,0,0.15)';
     ctx.fillRect(0, 0, w, h);
 
-    const x1 = p1.x * w,
-      y1 = p1.y * h;
-    const x2 = p2.x * w,
-      y2 = p2.y * h;
+    const x1 = p1.x * w, y1 = p1.y * h;
+    const x2 = p2.x * w, y2 = p2.y * h;
 
     ctx.beginPath();
     ctx.moveTo(x1, y1);
@@ -529,53 +713,59 @@ const App = () => {
     }
   };
 
-  // Initialization: Load Image -> Resize -> Save Raw Data -> Process
+  // Initialization: Load Image
   React.useEffect(() => {
     if (imageSrc && canvasRef.current) {
       const img = new Image();
       img.src = imageSrc;
       img.onload = () => {
         const MAX = 500;
-        let w = img.width,
-          h = img.height;
-        if (w > h && w > MAX) {
-          h *= MAX / w;
-          w = MAX;
-        } else if (h > MAX) {
-          w *= MAX / h;
-          h = MAX;
-        }
+        let w = img.width, h = img.height;
+        if (w > h && w > MAX) { h *= MAX / w; w = MAX; }
+        else if (h > MAX) { w *= MAX / h; h = MAX; }
         w = Math.round(w);
         h = Math.round(h);
 
-        // Set canvas dimensions
         canvasRef.current.width = w;
         canvasRef.current.height = h;
         uiCanvasRef.current.width = w;
         uiCanvasRef.current.height = h;
 
-        // Draw original to hidden canvas to extract data
         const ctx = canvasRef.current.getContext('2d');
         ctx.drawImage(img, 0, 0, w, h);
-
-        // Store Original Data for filters
         originalDataRef.current = ctx.getImageData(0, 0, w, h);
 
-        // Initial Filter Application
         applyImageFilters();
       };
     }
   }, [imageSrc]);
 
-  // Re-run filters when sliders change
   React.useEffect(() => {
     if (imageSrc) applyImageFilters();
   }, [contrast, minLevel, maxLevel]);
 
-  // Re-run fitting when method changes (filters are already baked into canvasRef)
   React.useEffect(() => {
-    if (imageSrc) performFitting();
+    if (imageSrc && appMode === 'line') performFitting();
   }, [degree, fitMode]);
+
+  React.useEffect(() => {
+    if (imageSrc && appMode === 'palette') performPaletteFit();
+  }, [colorCount, lockFrequency, paletteMethod]);
+
+  // Switch modes: re-run the appropriate pipeline
+  React.useEffect(() => {
+    if (!imageSrc) return;
+    if (appMode === 'palette') {
+      // Redraw image without overlay
+      if (canvasRef.current && uiCanvasRef.current) {
+        const ctx = uiCanvasRef.current.getContext('2d');
+        ctx.drawImage(canvasRef.current, 0, 0);
+      }
+      performPaletteFit();
+    } else {
+      performFitting();
+    }
+  }, [appMode]);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans p-4 md:p-8">
@@ -585,28 +775,48 @@ const App = () => {
             <Code className="w-8 h-8 text-indigo-600" />
             Gradient-to-Shader Fitter
           </h1>
-          <p className="text-slate-500 mt-2">Convert images to math. Supports Polynomial and Cosine Palettes.</p>
+          <p className="text-slate-500 mt-2">Convert images to math. Line sampling or dominant palette extraction.</p>
+
+          {/* Top-level mode selector */}
+          <div className="flex bg-slate-200 p-1 rounded-xl mt-4 w-fit gap-1">
+            <button
+              onClick={() => setAppMode('line')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                appMode === 'line'
+                  ? 'bg-white text-indigo-600 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <MousePointer2 className="w-4 h-4" /> Line Sample
+            </button>
+            <button
+              onClick={() => setAppMode('palette')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                appMode === 'palette'
+                  ? 'bg-white text-indigo-600 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <Palette className="w-4 h-4" /> Palette Extract
+            </button>
+          </div>
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="space-y-6">
-            {/* IMAGE & CONTROLS */}
+          <div className="space-y-6 min-w-0">
+            {/* IMAGE */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="font-semibold text-slate-800 flex items-center gap-2">
-                  <MousePointer2 className="w-4 h-4 text-slate-400" />
-                  {imageSrc ? 'Sample Line' : 'Input'}
+                  {appMode === 'line'
+                    ? <><MousePointer2 className="w-4 h-4 text-slate-400" />{imageSrc ? 'Sample Line' : 'Input'}</>
+                    : <><Palette className="w-4 h-4 text-slate-400" />Palette Source</>
+                  }
                 </h2>
-                {!imageSrc && (
-                  <label className="text-xs bg-indigo-600 text-white px-3 py-1 rounded cursor-pointer hover:bg-indigo-700">
-                    Upload <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-                  </label>
-                )}
-                {imageSrc && (
-                  <label className="text-xs text-indigo-600 hover:text-indigo-800 cursor-pointer font-medium">
-                    Change <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-                  </label>
-                )}
+                <label className="text-xs bg-indigo-600 text-white px-3 py-1 rounded cursor-pointer hover:bg-indigo-700">
+                  {imageSrc ? 'Change' : 'Upload'}
+                  <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                </label>
               </div>
 
               <div className="relative flex justify-center items-center bg-slate-100 rounded-lg border border-slate-200 overflow-hidden min-h-[200px] select-none">
@@ -619,7 +829,7 @@ const App = () => {
                 <canvas ref={canvasRef} className="hidden" />
                 <canvas
                   ref={uiCanvasRef}
-                  className={`max-w-full cursor-crosshair touch-none shadow-lg ${!imageSrc ? 'hidden' : 'block'}`}
+                  className={`max-w-full touch-none shadow-lg ${!imageSrc ? 'hidden' : 'block'} ${appMode === 'line' ? 'cursor-crosshair' : 'cursor-default'}`}
                   onMouseDown={handleMouseDown}
                   onMouseMove={handleMouseMove}
                   onMouseUp={handleMouseUp}
@@ -627,48 +837,29 @@ const App = () => {
                 />
               </div>
 
-              {/* Settings Group */}
+              {/* Settings */}
               <div className="mt-6 space-y-6">
-                {/* 1. Filter Controls */}
+                {/* Image Processing */}
                 <div className="space-y-3 p-4 bg-slate-50 rounded-lg border border-slate-100">
                   <h3 className="text-xs font-semibold text-slate-500 flex items-center gap-2">
                     <Sliders className="w-3 h-3" /> Image Processing
                   </h3>
-
-                  {/* Contrast */}
                   <div className="flex items-center gap-4">
                     <label className="text-xs font-medium text-slate-600 w-16">Contrast</label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="2"
-                      step="0.1"
-                      value={contrast}
+                    <input type="range" min="0" max="2" step="0.1" value={contrast}
                       onChange={(e) => setContrast(parseFloat(e.target.value))}
                       className="flex-1 accent-indigo-500 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer"
                     />
                     <span className="text-xs w-8 text-right">{contrast.toFixed(1)}</span>
                   </div>
-
-                  {/* Levels (Dual Slider Implementation simulated with two inputs for simplicity) */}
                   <div className="flex items-center gap-4">
                     <label className="text-xs font-medium text-slate-600 w-16">Levels</label>
                     <div className="flex-1 flex gap-2">
-                      <input
-                        type="range"
-                        min="0"
-                        max="255"
-                        step="1"
-                        value={minLevel}
+                      <input type="range" min="0" max="255" step="1" value={minLevel}
                         onChange={(e) => setMinLevel(Math.min(parseInt(e.target.value), maxLevel - 5))}
                         className="flex-1 accent-slate-800 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer"
                       />
-                      <input
-                        type="range"
-                        min="0"
-                        max="255"
-                        step="1"
-                        value={maxLevel}
+                      <input type="range" min="0" max="255" step="1" value={maxLevel}
                         onChange={(e) => setMaxLevel(Math.max(parseInt(e.target.value), minLevel + 5))}
                         className="flex-1 accent-slate-400 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer"
                       />
@@ -680,56 +871,92 @@ const App = () => {
                   </div>
                 </div>
 
-                {/* 2. Solver Controls */}
-                <div className="space-y-3">
-                  <h3 className="text-xs font-semibold text-slate-500 flex items-center gap-2">
-                    <RefreshCw className="w-3 h-3" /> Solver Settings
-                  </h3>
-                  <div className="flex bg-slate-100 p-1 rounded-lg">
-                    <button
-                      onClick={() => setFitMode('poly')}
-                      className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${
-                        fitMode === 'poly'
-                          ? 'bg-white text-indigo-600 shadow-sm'
-                          : 'text-slate-500 hover:text-slate-700'
-                      }`}
-                    >
-                      Polynomial
-                    </button>
-                    <button
-                      onClick={() => setFitMode('cosine')}
-                      className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${
-                        fitMode === 'cosine'
-                          ? 'bg-white text-indigo-600 shadow-sm'
-                          : 'text-slate-500 hover:text-slate-700'
-                      }`}
-                    >
-                      Cosine
-                    </button>
+                {/* Solver controls — conditional on mode */}
+                {appMode === 'line' ? (
+                  <div className="space-y-3">
+                    <h3 className="text-xs font-semibold text-slate-500 flex items-center gap-2">
+                      <RefreshCw className="w-3 h-3" /> Solver Settings
+                    </h3>
+                    <div className="flex bg-slate-100 p-1 rounded-lg">
+                      <button onClick={() => setFitMode('poly')}
+                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${fitMode === 'poly' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                        Polynomial
+                      </button>
+                      <button onClick={() => setFitMode('cosine')}
+                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${fitMode === 'cosine' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                        Cosine
+                      </button>
+                    </div>
+                    {fitMode === 'poly' ? (
+                      <div className="flex items-center gap-4">
+                        <label className="text-xs font-medium text-slate-600 w-16">Degree</label>
+                        <input type="range" min="1" max="6" step="1" value={degree}
+                          onChange={(e) => setDegree(parseInt(e.target.value))}
+                          className="flex-1 accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+                        />
+                        <span className="text-xs font-mono bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded">{degree}</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center text-xs text-slate-400 italic">
+                        Iterative solver auto-runs {solverSteps} steps.
+                      </div>
+                    )}
                   </div>
-
-                  {fitMode === 'poly' ? (
+                ) : (
+                  <div className="space-y-3">
+                    <h3 className="text-xs font-semibold text-slate-500 flex items-center gap-2">
+                      <Palette className="w-3 h-3" /> Palette Settings
+                    </h3>
+                    {/* Method toggle */}
+                    <div className="flex bg-slate-100 p-1 rounded-lg">
+                      <button onClick={() => setPaletteMethod('dominant')}
+                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${paletteMethod === 'dominant' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                        Dominant
+                      </button>
+                      <button onClick={() => setPaletteMethod('generative')}
+                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${paletteMethod === 'generative' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                        Generative
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-slate-400 leading-relaxed">
+                      {paletteMethod === 'dominant'
+                        ? 'Most frequent colors by pixel area.'
+                        : 'Runs k-means 24×, picks the palette with best perceptual spread and luminance range.'}
+                    </p>
                     <div className="flex items-center gap-4">
-                      <label className="text-xs font-medium text-slate-600 w-16">Degree</label>
-                      <input
-                        type="range"
-                        min="1"
-                        max="6"
-                        step="1"
-                        value={degree}
-                        onChange={(e) => setDegree(parseInt(e.target.value))}
+                      <label className="text-xs font-medium text-slate-600 w-20">Colors</label>
+                      <input type="range" min="3" max="12" step="1" value={colorCount}
+                        onChange={(e) => setColorCount(parseInt(e.target.value))}
                         className="flex-1 accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
                       />
-                      <span className="text-xs font-mono bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded">
-                        {degree}
-                      </span>
+                      <span className="text-xs font-mono bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded">{colorCount}</span>
                     </div>
-                  ) : (
-                    <div className="flex items-center justify-center text-xs text-slate-400 italic">
-                      Iterative solver auto-runs {solverSteps} steps.
+                    <div className="flex items-center gap-3">
+                      <label className="text-xs font-medium text-slate-600 w-20">Lock freq</label>
+                      <button
+                        onClick={() => setLockFrequency((v) => !v)}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${lockFrequency ? 'bg-indigo-500' : 'bg-slate-300'}`}
+                      >
+                        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${lockFrequency ? 'translate-x-4' : 'translate-x-1'}`} />
+                      </button>
+                      <span className="text-xs text-slate-400">{lockFrequency ? 'Integer c (perfect loop)' : 'Free float c'}</span>
                     </div>
-                  )}
-                </div>
+
+                    {/* Extracted color swatches */}
+                    {extractedColors.length > 0 && (
+                      <div className="space-y-1">
+                        <h4 className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Extracted Points</h4>
+                        <div className="rounded overflow-hidden border border-slate-200 h-8">
+                          <canvas ref={paletteSwatchRef} width={500} height={32} className="w-full h-full" />
+                        </div>
+                        <h4 className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide pt-1">Fitted Gradient</h4>
+                        <div className="rounded overflow-hidden border border-slate-200 h-8">
+                          <canvas ref={paletteGradientRef} width={500} height={32} className="w-full h-full" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -753,8 +980,8 @@ const App = () => {
           </div>
 
           {/* CODE OUTPUT */}
-          <div className="space-y-6">
-            <div className="bg-slate-900 text-slate-200 p-6 rounded-xl shadow-lg h-full flex flex-col">
+          <div className="space-y-6 min-w-0">
+            <div className="bg-slate-900 text-slate-200 p-6 rounded-xl shadow-lg h-full flex flex-col overflow-hidden w-full">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="font-semibold text-white flex items-center gap-2">
                   <Zap className="w-4 h-4 text-yellow-400" /> Generated GLSL
@@ -768,8 +995,16 @@ const App = () => {
                   </button>
                 )}
               </div>
-              <div className="flex-1 font-mono text-xs leading-relaxed overflow-auto whitespace-pre bg-slate-950 p-4 rounded-lg border border-slate-800">
-                {glslCode || '// Upload an image...'}
+
+              {/* Status badge */}
+              {status === 'processing' && (
+                <div className="mb-3 flex items-center gap-2 text-xs text-yellow-400">
+                  <RefreshCw className="w-3 h-3 animate-spin" /> Processing…
+                </div>
+              )}
+
+              <div className="flex-1 font-mono text-xs leading-relaxed overflow-x-auto whitespace-pre bg-slate-950 p-4 rounded-lg border border-slate-800 w-full min-w-0">
+                {glslCode || '// Upload an image and select a mode...'}
               </div>
               {error && (
                 <div className="mt-4 p-3 bg-red-900/30 border border-red-800/50 text-red-200 text-sm rounded flex items-center gap-2">
