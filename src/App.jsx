@@ -21,10 +21,13 @@ const App = () => {
   const [paletteFitMode, setPaletteFitMode] = React.useState('cosine'); // 'cosine' | 'poly'
   // Holds the last fitted result for palette mode so canvas effects can redraw after commit
   const [paletteDrawData, setPaletteDrawData] = React.useState(null);
+  const [weightDominance, setWeightDominance] = React.useState(false);
   // Colormind API
   const [apiModel, setApiModel] = React.useState('default');
   const [apiModels, setApiModels] = React.useState(['default', 'ui']);
+  const [apiSeedCount, setApiSeedCount] = React.useState(2);
   const apiSeedsRef = React.useRef(null); // cached seeds so regenerate only re-POSTs
+  const extractedColorsRef = React.useRef([]); // mirrors extractedColors for non-stale closures
   const paletteGradientRef = React.useRef(null);
   const paletteSwatchRef = React.useRef(null);
 
@@ -85,13 +88,25 @@ const App = () => {
     return x;
   };
 
+  // Compute t-values weighted by each color's area (dominant colors get wider t range)
+  const computeWeightedTValues = (colors) => {
+    const areas = colors.map(c => c.area > 0 ? c.area : 1);
+    const total = areas.reduce((a, b) => a + b, 0);
+    let cum = 0;
+    return colors.map((_, i) => {
+      const t = (cum + areas[i] / 2) / total;
+      cum += areas[i];
+      return t;
+    });
+  };
+
   // --- Math Logic: Polynomial Solver ---
-  const fitPolynomial = (samples, deg) => {
+  const fitPolynomial = (samples, deg, tValues = null) => {
     const N = deg + 1;
     const ATA = Array(N).fill(0).map(() => Array(N).fill(0));
     const ATb = { r: Array(N).fill(0), g: Array(N).fill(0), b: Array(N).fill(0) };
     for (let i = 0; i < samples.length; i++) {
-      const t = i / (samples.length - 1);
+      const t = tValues ? tValues[i] : i / (samples.length - 1);
       const powers = Array.from({ length: N }, (_, p) => Math.pow(t, p));
       for (let row = 0; row < N; row++) {
         for (let col = 0; col < N; col++) ATA[row][col] += powers[row] * powers[col];
@@ -108,7 +123,7 @@ const App = () => {
   };
 
   // --- Math Logic: Iterative Solver (Cosine) ---
-  const solveCosineParams = (samples, steps, lockFreq = false) => {
+  const solveCosineParams = (samples, steps, lockFreq = false, tValues = null) => {
     const solveChannel = (accessor) => {
       let bestParams = { a: 0.5, b: 0.5, c: 1.0, d: 0.0 };
       let bestError = Infinity;
@@ -119,7 +134,7 @@ const App = () => {
       const calcError = (p) => {
         let err = 0;
         for (let i = 0; i < samples.length; i++) {
-          const t = i / (samples.length - 1);
+          const t = tValues ? tValues[i] : i / (samples.length - 1);
           const actual = accessor(samples[i]);
           const predicted = p.a + p.b * Math.cos(2 * Math.PI * (p.c * t + p.d));
           err += (actual - predicted) ** 2;
@@ -341,8 +356,50 @@ const App = () => {
       const result = kmeans(inits);
       allRuns.push({ result, score: score(result) });
     }
-    // Return the best-scoring run (variety comes from random pixel sampling upstream)
-    return allRuns.reduce((best, r) => r.score > best.score ? r : best).result;
+    // Return the best-scoring run; compute cluster sizes for dominance weighting
+    const best = allRuns.reduce((b, r) => r.score > b.score ? r : b);
+    const sizes = new Array(k).fill(0);
+    for (const px of pixels) {
+      let bi = 0, bd = Infinity;
+      for (let j = 0; j < k; j++) {
+        const d = dist2(px, best.result[j]);
+        if (d < bd) { bd = d; bi = j; }
+      }
+      sizes[bi]++;
+    }
+    return best.result.map((c, i) => ({ centroid: c, area: sizes[i] / pixels.length }));
+  };
+
+  // --- Palette: Refit only (no re-extraction) ---
+  const performPaletteRefit = (colors) => {
+    if (!colors || colors.length < 2) return;
+    let primaryResult;
+    if (paletteFitMode === 'steps') {
+      const areas = colors.map(c => c.area > 0 ? c.area : 1);
+      const total = areas.reduce((a, b) => a + b, 0);
+      let cum = 0;
+      const tBoundaries = [];
+      for (let i = 0; i < colors.length - 1; i++) {
+        cum += areas[i] / total;
+        tBoundaries.push(cum);
+      }
+      primaryResult = { colors, tBoundaries };
+    } else if (paletteFitMode === 'linear' || paletteFitMode === 'catmull') {
+      const tValues = weightDominance
+        ? computeWeightedTValues(colors)
+        : colors.map((_, i) => i / (colors.length - 1));
+      primaryResult = { colors, tValues };
+    } else {
+      const tValues = weightDominance ? computeWeightedTValues(colors) : null;
+      primaryResult = paletteFitMode === 'cosine'
+        ? solveCosineParams(colors, solverSteps, lockFrequency, tValues)
+        : fitPolynomial(colors, degree, tValues);
+    }
+    setCoefficients(primaryResult);
+    setGlslCode(buildGLSL(primaryResult, paletteFitMode) + '\n\n' + buildColorGLSL(colors));
+    drawGraph(colors, primaryResult, paletteFitMode);
+    renderGradientPreview(primaryResult, paletteFitMode);
+    setPaletteDrawData({ colors, result: primaryResult, mode: paletteFitMode });
   };
 
   // --- Palette Extraction & Fitting ---
@@ -361,7 +418,6 @@ const App = () => {
       let withLuminance;
 
       if (paletteMethod === 'dominant') {
-        // extract-colors: frequency-based dominant colors
         const rawColors = await extractColors(imageData, {
           pixels: 10000,
           distance: 0.12,
@@ -375,15 +431,15 @@ const App = () => {
         withLuminance = topColors.map((c) => ({
           r: c.red / 255, g: c.green / 255, b: c.blue / 255,
           lum: 0.299 * c.red + 0.587 * c.green + 0.114 * c.blue,
+          area: c.area ?? 1,
         }));
       } else if (paletteMethod === 'api') {
-        // Extract seeds from image only if we don't have them yet (new image / first run)
         if (!apiSeedsRef.current) {
           const seedRaw = await extractColors(imageData, { pixels: 5000, distance: 0.2 });
-          const seedCount = Math.min(seedRaw.length, 4); // always leave ≥1 "N"
-          apiSeedsRef.current = seedRaw.slice(0, seedCount).map(c => [c.red, c.green, c.blue]);
+          apiSeedsRef.current = seedRaw.slice(0, 4).map(c => [c.red, c.green, c.blue]);
         }
-        const input = [...apiSeedsRef.current, ...Array(5 - apiSeedsRef.current.length).fill('N')];
+        const usedCount = Math.min(apiSeedCount, apiSeedsRef.current.length);
+        const input = [...apiSeedsRef.current.slice(0, usedCount), ...Array(5 - usedCount).fill('N')];
         const res = await fetch('http://colormind.io/api/', {
           method: 'POST',
           body: JSON.stringify({ model: apiModel, input }),
@@ -394,10 +450,9 @@ const App = () => {
         withLuminance = json.result.map(([r, g, b]) => ({
           r: r / 255, g: g / 255, b: b / 255,
           lum: 0.299 * r + 0.587 * g + 0.114 * b,
+          area: 1,
         }));
       } else {
-        // Generative: randomly sample a different pixel subset each call so
-        // each regenerate emphasises different image regions (colormind approach)
         const data = imageData.data;
         const totalPixels = w * h;
         const sampleSize = Math.min(3000, totalPixels);
@@ -410,28 +465,19 @@ const App = () => {
           if (data[idx + 3] > 50) pixels.push([data[idx], data[idx + 1], data[idx + 2]]);
         }
         if (pixels.length < colorCount) throw new Error('Not enough pixels to sample.');
-        const centroids = generativeKMeans(pixels, colorCount);
-        withLuminance = centroids.map((c) => ({
+        const clusters = generativeKMeans(pixels, colorCount);
+        withLuminance = clusters.map(({ centroid: c, area }) => ({
           r: c[0] / 255, g: c[1] / 255, b: c[2] / 255,
           lum: 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2],
+          area,
         }));
       }
 
       withLuminance.sort((a, b) => a.lum - b.lum);
-
+      extractedColorsRef.current = withLuminance;
       setExtractedColors(withLuminance);
       drawSwatches(withLuminance);
-
-      // Fit both, primary determined by paletteFitMode
-      const primaryResult = paletteFitMode === 'cosine'
-        ? solveCosineParams(withLuminance, solverSteps, lockFrequency)
-        : fitPolynomial(withLuminance, degree);
-      setCoefficients(primaryResult);
-      setGlslCode(buildGLSL(primaryResult, paletteFitMode) + '\n\n' + buildColorGLSL(withLuminance));
-      drawGraph(withLuminance, primaryResult, paletteFitMode);
-      renderGradientPreview(primaryResult, paletteFitMode);
-      // Defer swatch/gradient canvas drawing to after React commits the DOM
-      setPaletteDrawData({ colors: withLuminance, result: primaryResult, mode: paletteFitMode });
+      performPaletteRefit(withLuminance);
       setStatus('done');
     } catch (e) {
       console.error(e);
@@ -443,15 +489,9 @@ const App = () => {
   const shuffleColors = () => {
     if (extractedColors.length === 0) return;
     const shuffled = [...extractedColors].sort(() => Math.random() - 0.5);
+    extractedColorsRef.current = shuffled;
     setExtractedColors(shuffled);
-    const primaryResult = paletteFitMode === 'cosine'
-      ? solveCosineParams(shuffled, solverSteps, lockFrequency)
-      : fitPolynomial(shuffled, degree);
-    setCoefficients(primaryResult);
-    setGlslCode(buildGLSL(primaryResult, paletteFitMode) + '\n\n' + buildColorGLSL(shuffled));
-    drawGraph(shuffled, primaryResult, paletteFitMode);
-    renderGradientPreview(primaryResult, paletteFitMode);
-    setPaletteDrawData({ colors: shuffled, result: primaryResult, mode: paletteFitMode });
+    performPaletteRefit(shuffled);
   };
 
   const drawSwatches = (colors) => {
@@ -574,6 +614,73 @@ const App = () => {
       let s = n.toFixed(3);
       return s.indexOf('.') === -1 ? s + '.0' : s;
     };
+
+    if (mode === 'steps') {
+      const { colors, tBoundaries } = coeffs;
+      let code = `// Stepped Palette (area-weighted boundaries)\nvec3 palette(float t) {\n`;
+      for (let i = 0; i < colors.length - 1; i++) {
+        const c = colors[i];
+        code += `    if (t < ${fmt(tBoundaries[i])}) return vec3(${fmt(c.r)}, ${fmt(c.g)}, ${fmt(c.b)});\n`;
+      }
+      const last = colors[colors.length - 1];
+      code += `    return vec3(${fmt(last.r)}, ${fmt(last.g)}, ${fmt(last.b)});\n}`;
+      return code;
+    }
+
+    if (mode === 'linear') {
+      const { colors, tValues } = coeffs;
+      let code = `// Linear Interpolated Palette\nvec3 palette(float t) {\n`;
+      for (let i = 0; i < colors.length - 1; i++) {
+        const c0 = colors[i], c1 = colors[i + 1];
+        const t0 = tValues[i], t1 = tValues[i + 1];
+        const range = Math.max(0.00001, t1 - t0).toFixed(5);
+        code += `    if (t < ${fmt(t1)}) return mix(\n        vec3(${fmt(c0.r)},${fmt(c0.g)},${fmt(c0.b)}),\n        vec3(${fmt(c1.r)},${fmt(c1.g)},${fmt(c1.b)}),\n        (t - ${fmt(t0)}) / ${range});\n`;
+      }
+      const last = colors[colors.length - 1];
+      code += `    return vec3(${fmt(last.r)}, ${fmt(last.g)}, ${fmt(last.b)});\n}`;
+      return code;
+    }
+
+    if (mode === 'catmull') {
+      const { colors, tValues } = coeffs;
+      const n = colors.length;
+      const isUniform = tValues.every((tv, i) => Math.abs(tv - i / (n - 1)) < 0.001);
+      let code = `// Catmull-Rom Palette\n`;
+      code += `vec3 catmullRom(vec3 p0, vec3 p1, vec3 p2, vec3 p3, float t) {\n`;
+      code += `    float t2 = t * t;\n    float t3 = t2 * t;\n`;
+      code += `    float b1 = -t3 + 2.0 * t2 - t;\n`;
+      code += `    float b2 = 3.0 * t3 - 5.0 * t2 + 2.0;\n`;
+      code += `    float b3 = -3.0 * t3 + 4.0 * t2 + t;\n`;
+      code += `    float b4 = t3 - t2;\n`;
+      code += `    return 0.5 * (b1 * p0 + b2 * p1 + b3 * p2 + b4 * p3);\n}\n\n`;
+      code += `vec3 palette(float t) {\n`;
+      code += `    vec3 colors[${n}] = vec3[](\n`;
+      code += colors.map((c, i) =>
+        `        vec3(${fmt(c.r)}, ${fmt(c.g)}, ${fmt(c.b)})${i < n - 1 ? ',' : ''}`
+      ).join('\n');
+      code += `\n    );\n`;
+      if (isUniform) {
+        code += `    float f = clamp(t, 0.0, 1.0) * ${n - 1}.0;\n`;
+        code += `    int i = clamp(int(f), 0, ${n - 2});\n`;
+        code += `    float localT = fract(f);\n`;
+      } else {
+        code += `    int i = ${n - 2}; float localT = 1.0;\n`;
+        for (let j = 0; j < n - 1; j++) {
+          const t0 = tValues[j].toFixed(5), t1 = tValues[j + 1].toFixed(5);
+          const range = Math.max(0.00001, tValues[j + 1] - tValues[j]).toFixed(5);
+          const cond = j === 0 ? `if` : j === n - 2 ? `else` : `else if`;
+          const guard = j === n - 2 ? `` : ` (t < ${t1})`;
+          code += `    ${cond}${guard} { i = ${j}; localT = clamp((t - ${t0}) / ${range}, 0.0, 1.0); }\n`;
+        }
+      }
+      code += `    vec3 p0 = colors[max(i - 1, 0)];\n`;
+      code += `    vec3 p1 = colors[i];\n`;
+      code += `    vec3 p2 = colors[min(i + 1, ${n - 1})];\n`;
+      code += `    vec3 p3 = colors[min(i + 2, ${n - 1})];\n`;
+      code += `    return catmullRom(p0, p1, p2, p3, localT);\n}`;
+      return code;
+    }
+
     const deg = coeffs.r.length ? coeffs.r.length - 1 : degree;
 
     if (mode === 'poly') {
@@ -604,6 +711,53 @@ const App = () => {
 
   // --- Visualization ---
   const evalColor = (coeffs, t, mode) => {
+    if (mode === 'steps') {
+      const { colors, tBoundaries } = coeffs;
+      for (let i = 0; i < tBoundaries.length; i++) {
+        if (t < tBoundaries[i]) return colors[i];
+      }
+      return colors[colors.length - 1];
+    }
+    if (mode === 'linear') {
+      const { colors, tValues } = coeffs;
+      for (let i = 0; i < colors.length - 1; i++) {
+        const t0 = tValues[i], t1 = tValues[i + 1];
+        if (t <= t1 || i === colors.length - 2) {
+          const frac = t1 > t0 ? Math.max(0, Math.min(1, (t - t0) / (t1 - t0))) : 0;
+          return {
+            r: colors[i].r + (colors[i + 1].r - colors[i].r) * frac,
+            g: colors[i].g + (colors[i + 1].g - colors[i].g) * frac,
+            b: colors[i].b + (colors[i + 1].b - colors[i].b) * frac,
+          };
+        }
+      }
+      return colors[colors.length - 1];
+    }
+    if (mode === 'catmull') {
+      const { colors, tValues } = coeffs;
+      const n = colors.length;
+      let segIdx = n - 2, localT = 1.0;
+      for (let j = 0; j < n - 1; j++) {
+        if (t <= tValues[j + 1] || j === n - 2) {
+          segIdx = j;
+          const range = tValues[j + 1] - tValues[j];
+          localT = range > 0 ? Math.max(0, Math.min(1, (t - tValues[j]) / range)) : 0;
+          break;
+        }
+      }
+      const p = (idx) => colors[Math.max(0, Math.min(n - 1, idx))];
+      const p0 = p(segIdx - 1), p1 = p(segIdx), p2 = p(segIdx + 1), p3 = p(segIdx + 2);
+      const lt = localT, lt2 = lt * lt, lt3 = lt2 * lt;
+      const b1 = -lt3 + 2*lt2 - lt;
+      const b2 = 3*lt3 - 5*lt2 + 2;
+      const b3 = -3*lt3 + 4*lt2 + lt;
+      const b4 = lt3 - lt2;
+      return {
+        r: 0.5 * (b1*p0.r + b2*p1.r + b3*p2.r + b4*p3.r),
+        g: 0.5 * (b1*p0.g + b2*p1.g + b3*p2.g + b4*p3.g),
+        b: 0.5 * (b1*p0.b + b2*p1.b + b3*p2.b + b4*p3.b),
+      };
+    }
     if (mode === 'poly') {
       let r = 0, g = 0, b = 0;
       for (let i = 0; i < coeffs.r.length; i++) {
@@ -613,10 +767,9 @@ const App = () => {
         b += coeffs.b[i] * term;
       }
       return { r, g, b };
-    } else {
-      const val = (p) => p.a + p.b * Math.cos(2 * Math.PI * (p.c * t + p.d));
-      return { r: val(coeffs.r), g: val(coeffs.g), b: val(coeffs.b) };
     }
+    const val = (p) => p.a + p.b * Math.cos(2 * Math.PI * (p.c * t + p.d));
+    return { r: val(coeffs.r), g: val(coeffs.g), b: val(coeffs.b) };
   };
 
   const renderGradientPreview = (coeffs, mode) => {
@@ -704,16 +857,9 @@ const App = () => {
       ctx.lineJoin = 'round';
       for (let x = 0; x <= W; x += 2) {
         const t = x / W;
-        let val = 0;
-        if (mode === 'poly') {
-          const cs = coeffs[channel];
-          for (let i = 0; i < cs.length; i++) val += cs[i] * Math.pow(t, i);
-        } else {
-          const p = coeffs[channel];
-          val = p.a + p.b * Math.cos(2 * Math.PI * (p.c * t + p.d));
-        }
-        if (x === 0) ctx.moveTo(x, mapY(val));
-        else ctx.lineTo(x, mapY(val));
+        const c = evalColor(coeffs, t, mode);
+        if (x === 0) ctx.moveTo(x, mapY(c[channel]));
+        else ctx.lineTo(x, mapY(c[channel]));
       }
       ctx.stroke();
     };
@@ -805,9 +951,16 @@ const App = () => {
     if (imageSrc && appMode === 'line') performFitting();
   }, [degree, fitMode]);
 
+  // Re-extract colors when extraction parameters change
   React.useEffect(() => {
     if (imageSrc && appMode === 'palette') performPaletteFit();
-  }, [colorCount, lockFrequency, paletteMethod, paletteFitMode]);
+  }, [colorCount, paletteMethod, apiModel, apiSeedCount]);
+
+  // Refit with existing colors when only fit parameters change (no re-extraction)
+  React.useEffect(() => {
+    if (imageSrc && appMode === 'palette' && extractedColorsRef.current.length >= 2)
+      performPaletteRefit(extractedColorsRef.current);
+  }, [paletteFitMode, lockFrequency, degree, weightDominance]);
 
   // Draw palette swatches + gradient strip AFTER React commits the DOM
   React.useEffect(() => {
@@ -993,9 +1146,9 @@ const App = () => {
                     </div>
                     <div className="flex items-center justify-between">
                       <p className="text-[10px] text-slate-400 leading-relaxed">
-                        {paletteMethod === 'dominant' && 'Most frequent colors by pixel area.'}
-                        {paletteMethod === 'generative' && 'Random pixel sample → k-means 24×, best spread wins.'}
-                        {paletteMethod === 'api' && 'Seeds up to 4 image colors into Colormind, always returns 5.'}
+                        {paletteMethod === 'dominant' && 'Ranks colors by pixel coverage — most frequent colors first. Deterministic.'}
+                        {paletteMethod === 'generative' && 'Runs k-means 24× on random pixel subsets, picks the run with best color spread. Varies on regenerate.'}
+                        {paletteMethod === 'api' && `Colormind AI palette — ${apiSeedCount} color${apiSeedCount !== 1 ? 's' : ''} locked from image, ${5 - apiSeedCount} generated by AI. Always 5 colors. Varies on regenerate.`}
                       </p>
                       {(paletteMethod === 'generative' || paletteMethod === 'api') && imageSrc && (
                         <button
@@ -1027,9 +1180,28 @@ const App = () => {
                       </button>
                       <button onClick={() => setPaletteFitMode('poly')}
                         className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${paletteFitMode === 'poly' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-                        Polynomial
+                        Poly
+                      </button>
+                      <button onClick={() => setPaletteFitMode('linear')}
+                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${paletteFitMode === 'linear' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                        Linear
+                      </button>
+                      <button onClick={() => setPaletteFitMode('steps')}
+                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${paletteFitMode === 'steps' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                        Steps
+                      </button>
+                      <button onClick={() => setPaletteFitMode('catmull')}
+                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${paletteFitMode === 'catmull' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                        Catmull
                       </button>
                     </div>
+                    <p className="text-[10px] text-slate-400 leading-relaxed">
+                      {paletteFitMode === 'cosine' && 'Fits a + b·cos(2π(ct+d)) per channel. Smooth, loops perfectly with locked freq. Best for organic gradients.'}
+                      {paletteFitMode === 'poly' && 'Least-squares polynomial through the colors. Can overshoot — use clamp. Higher degree = more flexibility, more risk of artifacts.'}
+                      {paletteFitMode === 'linear' && 'Direct mix() between color stops. Exact colors, no overshoot. Weight dominance stretches dominant colors across more t-range.'}
+                      {paletteFitMode === 'steps' && 'Hard cuts between colors. Each color occupies t-range proportional to its area. Good for quantized / posterized looks.'}
+                      {paletteFitMode === 'catmull' && 'Catmull-Rom spline through colors. Smooth like cosine but passes exactly through each color. Weight dominance adjusts stop spacing.'}
+                    </p>
                     {paletteFitMode === 'poly' && (
                       <div className="flex items-center gap-4">
                         <label className="text-xs font-medium text-slate-600 w-16">Degree</label>
@@ -1048,6 +1220,16 @@ const App = () => {
                       />
                       <span className="text-xs font-mono bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded">{colorCount}</span>
                     </div>}
+                    {paletteMethod === 'api' && (
+                      <div className="flex items-center gap-4">
+                        <label className="text-xs font-medium text-slate-600 w-20">Img seeds</label>
+                        <input type="range" min="1" max="4" step="1" value={apiSeedCount}
+                          onChange={(e) => setApiSeedCount(parseInt(e.target.value))}
+                          className="flex-1 accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+                        />
+                        <span className="text-xs font-mono bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded">{apiSeedCount} / 5</span>
+                      </div>
+                    )}
                     {paletteFitMode === 'cosine' && (
                       <div className="flex items-center gap-3">
                         <label className="text-xs font-medium text-slate-600 w-20">Lock freq</label>
@@ -1058,6 +1240,18 @@ const App = () => {
                           <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${lockFrequency ? 'translate-x-4' : 'translate-x-1'}`} />
                         </button>
                         <span className="text-xs text-slate-400">{lockFrequency ? 'Integer c (perfect loop)' : 'Free float c'}</span>
+                      </div>
+                    )}
+                    {(paletteFitMode === 'linear' || paletteFitMode === 'catmull') && paletteMethod !== 'api' && (
+                      <div className="flex items-center gap-3">
+                        <label className="text-xs font-medium text-slate-600 w-20">Weight dominance</label>
+                        <button
+                          onClick={() => setWeightDominance((v) => !v)}
+                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${weightDominance ? 'bg-indigo-500' : 'bg-slate-300'}`}
+                        >
+                          <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${weightDominance ? 'translate-x-4' : 'translate-x-1'}`} />
+                        </button>
+                        <span className="text-xs text-slate-400">{weightDominance ? 't ∝ area' : 'Uniform t'}</span>
                       </div>
                     )}
 
