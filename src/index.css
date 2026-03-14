@@ -68,32 +68,32 @@
   color-scheme: light;
 
   /* ── Surface ── */
-  --bg:             #e9e8e5;
-  --surface:        #f2f1ee;
-  --surface-inset:  #e9e8e5;
-  --surface-muted:  #e0dfdc;
+  --bg: #e9e8e5;
+  --surface: #f2f1ee;
+  --surface-inset: #e9e8e5;
+  --surface-muted: #e0dfdc;
 
   /* ── Border ── */
-  --border:         #d4d3d0;
-  --border-strong:  #c4c3c0;
+  --border: #d4d3d0;
+  --border-strong: #c4c3c0;
 
   /* ── Text ── */
-  --text:           #1c1c1a;
-  --text-hover:     #3a3a38;
+  --text: #1c1c1a;
+  --text-hover: #3a3a38;
   --text-secondary: #6a6a68;
-  --text-muted:     #8a8a88;
+  --text-muted: #8a8a88;
 
   /* ── Accent (change this one value to retheme) ── */
-  --accent:         #ff6756;
-  --accent-hover:   #e04f3f;
-  --accent-bg:      #fef0ee;
+  --accent: #ff6756;
+  --accent-hover: #e04f3f;
+  --accent-bg: #fef0ee;
 
   /* ── Code panel ── */
-  --code-bg:           #181816;
-  --code-surface:      #111110;
-  --code-border:       #2a2a28;
-  --code-text:         #d8d8d6;
-  --code-text-strong:  #c8c8c6;
+  --code-bg: #181816;
+  --code-surface: #111110;
+  --code-border: #2a2a28;
+  --code-text: #d8d8d6;
+  --code-text-strong: #c8c8c6;
 
   color: var(--text);
   background-color: var(--bg);
