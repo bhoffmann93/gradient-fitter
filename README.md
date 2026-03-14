@@ -4,6 +4,8 @@ A browser tool for extracting color gradients from images and fitting them into 
 
 **Live demo:** https://www.bernhard-hoffmann.com/gradient-fitter/
 
+![GLSL Gradient Fitter](screenshot.png)
+
 ---
 
 ## What it does
