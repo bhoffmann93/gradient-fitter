@@ -18,6 +18,7 @@ import CodePanel from './components/CodePanel.jsx';
 const App = () => {
   const [imageSrc, setImageSrc] = React.useState(null);
   const [appMode, setAppMode] = React.useState('line');
+  const [rightTab, setRightTab] = React.useState('settings');
 
   const [fitMode, setFitMode] = React.useState(DEFAULTS.fitMode);
   const [degree, setDegree] = React.useState(DEFAULTS.degree);
@@ -270,38 +271,30 @@ const App = () => {
     }
   }, [appMode]);
 
-  const modeTab = (id, label) => (
-    <button
-      key={id}
-      onClick={() => setAppMode(id)}
-      className={`flex items-center gap-2 px-4 py-2.5 text-[11px] font-semibold tracking-widest uppercase transition-all border-b-2 -mb-px ${
-        appMode === id
-          ? 'border-[var(--accent)] text-[var(--accent)]'
-          : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text)]'
-      }`}
-    >
-      {label}
-    </button>
-  );
-
   return (
-    <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] p-4 md:p-6">
+    <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] p-4 md:p-5">
       <div className="max-w-[1500px] mx-auto">
-        <header className="mb-8">
-          <div className="flex items-baseline gap-4">
-            <h1 className="text-2xl font-bold text-[var(--text)] tracking-normal">Gradient Fitter</h1>
-            <span className="text-[10px] text-[var(--text-muted)] font-semibold tracking-widest uppercase">
-              GLSL Generator
-            </span>
+
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex bg-[var(--surface-muted)] p-0.5 rounded-sm border border-[var(--border)]">
+            {[['line', 'Line Sample'], ['palette', 'Palette Extract']].map(([id, label]) => (
+              <button
+                key={id}
+                onClick={() => setAppMode(id)}
+                className={`px-4 py-1.5 text-[10px] rounded-sm font-semibold tracking-widest uppercase transition-all ${
+                  appMode === id
+                    ? 'bg-[var(--surface)] text-[var(--accent)]'
+                    : 'text-[var(--text-muted)] hover:text-[var(--text)]'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
-          <p className="text-[var(--text-secondary)] mt-1 text-xs tracking-wide">
-            Convert images to GLSL gradient functions.
-          </p>
-          <div className="flex border-b border-[var(--border)] mt-5 gap-0">
-            {modeTab('line', 'Line Sample')}
-            {modeTab('palette', 'Palette Extract')}
-          </div>
-        </header>
+          <span className="text-[11px] font-semibold tracking-widest text-[var(--text-muted)] uppercase select-none">
+            Gradient Fitter
+          </span>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.2fr] gap-5 items-start">
           <div className="space-y-4 min-w-0">
@@ -315,46 +308,67 @@ const App = () => {
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
             />
-
-            <div className="bg-[var(--surface)] p-5 border border-[var(--border)] rounded-sm">
-              <div className="space-y-5">
-                {appMode === 'line' && (
-                  <LineModeSettings
-                    fitMode={fitMode} setFitMode={setFitMode}
-                    degree={degree} setDegree={setDegree}
-                  />
-                )}
-                <ImageAdjustPanel
-                  contrast={contrast} setContrast={setContrast}
-                  minLevel={minLevel} setMinLevel={setMinLevel}
-                  maxLevel={maxLevel} setMaxLevel={setMaxLevel}
-                />
-                {appMode === 'palette' && (
-                  <PaletteModeSettings
-                    paletteMethod={paletteMethod} setPaletteMethod={setPaletteMethod}
-                    paletteFitMode={paletteFitMode} setPaletteFitMode={setPaletteFitMode}
-                    colorCount={colorCount} setColorCount={setColorCount}
-                    lockFrequency={lockFrequency} setLockFrequency={setLockFrequency}
-                    weightDominance={weightDominance} setWeightDominance={setWeightDominance}
-                    degree={degree} setDegree={setDegree}
-                    apiModel={apiModel} setApiModel={setApiModel}
-                    apiModels={apiModels}
-                    apiSeedCount={apiSeedCount} setApiSeedCount={setApiSeedCount}
-                    extractedColors={extractedColors}
-                    paletteSwatchRef={paletteSwatchRef}
-                    paletteGradientRef={paletteGradientRef}
-                    imageSrc={imageSrc}
-                    onRegenerate={performPaletteFit}
-                    onShuffle={shuffleColors}
-                  />
-                )}
-              </div>
-            </div>
-
             <GraphPanel graphRef={graphRef} shaderCanvasRef={shaderCanvasRef} />
           </div>
 
-          <CodePanel glslCode={glslCode} status={status} error={error} />
+          <div className="min-w-0 border border-[var(--border)] rounded-sm overflow-hidden">
+            <div className="flex bg-[var(--surface-muted)] border-b border-[var(--border)]">
+              {[['settings', 'Settings'], ['code', 'Code']].map(([id, label]) => (
+                <button
+                  key={id}
+                  onClick={() => setRightTab(id)}
+                  className={`px-5 py-3 text-[10px] font-semibold tracking-widest uppercase transition-all border-r border-[var(--border)] last:border-r-0 ${
+                    rightTab === id
+                      ? 'bg-[var(--surface)] text-[var(--accent)]'
+                      : 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface)]'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {rightTab === 'settings' && (
+              <div className="bg-[var(--surface)] p-5 min-h-[480px]">
+                <div className="space-y-5">
+                  {appMode === 'line' && (
+                    <LineModeSettings
+                      fitMode={fitMode} setFitMode={setFitMode}
+                      degree={degree} setDegree={setDegree}
+                    />
+                  )}
+                  <ImageAdjustPanel
+                    contrast={contrast} setContrast={setContrast}
+                    minLevel={minLevel} setMinLevel={setMinLevel}
+                    maxLevel={maxLevel} setMaxLevel={setMaxLevel}
+                  />
+                  {appMode === 'palette' && (
+                    <PaletteModeSettings
+                      paletteMethod={paletteMethod} setPaletteMethod={setPaletteMethod}
+                      paletteFitMode={paletteFitMode} setPaletteFitMode={setPaletteFitMode}
+                      colorCount={colorCount} setColorCount={setColorCount}
+                      lockFrequency={lockFrequency} setLockFrequency={setLockFrequency}
+                      weightDominance={weightDominance} setWeightDominance={setWeightDominance}
+                      degree={degree} setDegree={setDegree}
+                      apiModel={apiModel} setApiModel={setApiModel}
+                      apiModels={apiModels}
+                      apiSeedCount={apiSeedCount} setApiSeedCount={setApiSeedCount}
+                      extractedColors={extractedColors}
+                      paletteSwatchRef={paletteSwatchRef}
+                      paletteGradientRef={paletteGradientRef}
+                      imageSrc={imageSrc}
+                      onRegenerate={performPaletteFit}
+                      onShuffle={shuffleColors}
+                    />
+                  )}
+                </div>
+              </div>
+            )}
+
+            {rightTab === 'code' && (
+              <CodePanel glslCode={glslCode} status={status} error={error} />
+            )}
+          </div>
         </div>
       </div>
     </div>

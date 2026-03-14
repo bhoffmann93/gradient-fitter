@@ -172,20 +172,27 @@ const PaletteModeSettings = ({
     {paletteFitMode === 'cosine' && (
       <div className="flex items-center gap-3">
         <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 uppercase tracking-wider">Lock freq</label>
-        <Toggle on={lockFrequency} onToggle={() => setLockFrequency((v) => !v)} labelOn="Integer c" labelOff="Free float c" />
+        <Toggle on={lockFrequency} onToggle={() => setLockFrequency((v) => !v)} labelOn="Locked" labelOff="Free" />
         <span className="text-[10px] text-[var(--text-muted)]">
-          {lockFrequency ? 'Integer c (perfect loop)' : 'Free float c'}
+          {lockFrequency ? 'Locked — gradient loops perfectly' : 'Free — more accurate fit, may not loop'}
         </span>
       </div>
     )}
 
     {(paletteFitMode === 'linear' || paletteFitMode === 'catmull') && paletteMethod !== 'api' && (
-      <div className="flex items-center gap-3">
-        <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 uppercase tracking-wider">Weight dom.</label>
-        <Toggle on={weightDominance} onToggle={() => setWeightDominance((v) => !v)} labelOn="t ∝ area" labelOff="Uniform t" />
-        <span className="text-[10px] text-[var(--text-muted)]">
-          {weightDominance ? 't ∝ area' : 'Uniform t'}
-        </span>
+      <div className="space-y-1.5">
+        <div className="flex items-center gap-3">
+          <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 uppercase tracking-wider">Weight dom.</label>
+          <Toggle on={weightDominance} onToggle={() => setWeightDominance((v) => !v)} labelOn="Weighted" labelOff="Uniform" />
+          <span className="text-[10px] text-[var(--text-muted)]">
+            {weightDominance ? 'Weighted' : 'Uniform'}
+          </span>
+        </div>
+        <p className="text-[10px] text-[var(--text-muted)] leading-relaxed">
+          {weightDominance
+            ? 'Color stops are spaced by pixel area — dominant colors occupy a wider t-range, so they appear more in the gradient.'
+            : 'Color stops are evenly spaced across t. Each color gets equal range regardless of how much of the image it covers.'}
+        </p>
       </div>
     )}
 

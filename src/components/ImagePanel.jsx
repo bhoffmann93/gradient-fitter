@@ -22,7 +22,7 @@ const ImagePanel = ({
       </label>
     </div>
 
-    <div className="relative flex justify-center items-center bg-[var(--bg)] border-2 border-dashed border-[var(--border-strong)] overflow-hidden min-h-[200px] select-none">
+    <div className="relative flex justify-center items-center bg-[var(--bg)] border-2 border-dashed border-[var(--border-strong)] overflow-hidden min-h-[200px] max-h-[380px] select-none">
       {!imageSrc && (
         <div className="text-[var(--text-muted)] flex flex-col items-center gap-2 pointer-events-none">
           <Upload className="w-10 h-10 opacity-25" />
@@ -33,7 +33,7 @@ const ImagePanel = ({
       <canvas ref={canvasRef} className="hidden" />
       <canvas
         ref={uiCanvasRef}
-        className={`max-w-full touch-none ${!imageSrc ? 'hidden' : 'block'} ${appMode === 'line' ? 'cursor-crosshair' : 'cursor-default'}`}
+        className={`max-w-full max-h-[380px] object-contain touch-none ${!imageSrc ? 'hidden' : 'block'} ${appMode === 'line' ? 'cursor-crosshair' : 'cursor-default'}`}
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}
         onMouseUp={onMouseUp}
