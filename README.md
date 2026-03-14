@@ -2,7 +2,7 @@
 
 A browser tool for extracting color gradients from images and fitting them into GLSL shader functions — ready to paste into your fragment shader.
 
-**Live demo:** https://bhoffmann93.github.io/gradient-fitter/
+**Live demo:** https://www.bernhard-hoffmann.com/gradient-fitter/
 
 ---
 
@@ -48,7 +48,3 @@ This project was built as a **vibe coding experiment** to test [Claude Code](htt
 npm install
 npm run dev
 ```
-
-## Deploy
-
-Pushes to `main` automatically deploy to GitHub Pages via GitHub Actions. To enable in your fork: go to **Settings → Pages → Source → GitHub Actions**.
