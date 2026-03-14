@@ -30,7 +30,7 @@ const App = () => {
   const [lockFrequency, setLockFrequency] = React.useState(true);
   const [extractedColors, setExtractedColors] = React.useState([]);
   const [paletteMethod, setPaletteMethod] = React.useState('dominant'); // 'dominant' | 'generative' | 'api'
-  const [paletteFitMode, setPaletteFitMode] = React.useState('cosine'); // 'cosine' | 'poly'
+  const [paletteFitMode, setPaletteFitMode] = React.useState('catmull');
   // Holds the last fitted result for palette mode so canvas effects can redraw after commit
   const [paletteDrawData, setPaletteDrawData] = React.useState(null);
   const [weightDominance, setWeightDominance] = React.useState(false);
