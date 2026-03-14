@@ -1173,7 +1173,8 @@ const App = () => {
           </div>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-[1fr_280px_1.5fr] gap-5 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.2fr] gap-5 items-start">
+          <div className="space-y-4 min-w-0">
           {/* IMAGE */}
           <div className="bg-[var(--surface)] p-5 border border-[var(--border)] rounded-sm">
             <div className="flex justify-between items-center mb-4">
@@ -1207,7 +1208,7 @@ const App = () => {
           </div>
 
           {/* Settings */}
-          <div className="bg-[var(--surface)] p-5 border border-[var(--border)] rounded-sm lg:col-start-1 lg:row-start-2 xl:col-start-2 xl:row-start-1">
+          <div className="bg-[var(--surface)] p-5 border border-[var(--border)] rounded-sm">
             <div className="space-y-5">
               {/* Fit mode toggle — line mode only */}
               {appMode === 'line' && (
@@ -1592,7 +1593,7 @@ const App = () => {
           </div>
 
           {/* ANALYSIS GRAPH */}
-          <div className="bg-[var(--surface)] p-5 border border-[var(--border)] rounded-sm lg:col-start-1 lg:row-start-3 xl:col-start-1 xl:row-start-2">
+          <div className="bg-[var(--surface)] p-5 border border-[var(--border)] rounded-sm">
             <h2 className="font-semibold text-[var(--text)] text-[10px] uppercase tracking-widest mb-4 flex items-center gap-2">
               <Activity className="w-3 h-3 text-[var(--text-muted)]" /> RGB Channels
             </h2>
@@ -1608,9 +1609,10 @@ const App = () => {
               </div>
             </div>
           </div>
+          </div>{/* end left column */}
 
           {/* CODE OUTPUT */}
-          <div className="min-w-0 lg:col-start-2 lg:row-start-1 lg:row-span-3 xl:col-start-3 xl:row-start-1 xl:row-span-2 lg:self-stretch">
+          <div className="min-w-0 lg:self-stretch">
             <div className="bg-[var(--code-bg)] text-[var(--code-text)] p-5 rounded-sm h-full flex flex-col overflow-hidden w-full border border-[var(--code-border)]">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="font-semibold text-[var(--code-text-strong)] text-[10px] uppercase tracking-widest flex items-center gap-2">
