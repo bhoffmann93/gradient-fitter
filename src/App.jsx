@@ -863,19 +863,23 @@ const App = () => {
   };
 
   const renderGradientPreview = (coeffs, mode) => {
-    if (!shaderCanvasRef.current) return;
-    const ctx = shaderCanvasRef.current.getContext('2d');
-    const w = shaderCanvasRef.current.width;
-    const h = shaderCanvasRef.current.height;
+    const canvas = shaderCanvasRef.current;
+    if (!canvas) return;
+    const dpr = window.devicePixelRatio || 1;
+    const lw = canvas.clientWidth || 500;
+    const lh = canvas.clientHeight || 64;
+    canvas.width = lw * dpr;
+    canvas.height = lh * dpr;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width;
+    const h = canvas.height;
     const imageData = ctx.createImageData(w, h);
-
     for (let x = 0; x < w; x++) {
       const t = x / w;
       const c = evalColor(coeffs, t, mode);
       const r = Math.max(0, Math.min(1, c.r)) * 255;
       const g = Math.max(0, Math.min(1, c.g)) * 255;
       const b = Math.max(0, Math.min(1, c.b)) * 255;
-
       for (let y = 0; y < h; y++) {
         const idx = (y * w + x) * 4;
         imageData.data[idx] = r;
@@ -888,36 +892,68 @@ const App = () => {
   };
 
   const drawGraph = (samples, coeffs, mode) => {
-    if (!graphRef.current) return;
-    const ctx = graphRef.current.getContext('2d');
-    const W = graphRef.current.width;
-    const H = graphRef.current.height;
+    const canvas = graphRef.current;
+    if (!canvas) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const W = canvas.clientWidth || 500;
+    const H = canvas.clientHeight || 224;
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+
+    const Y_MIN = -0.25;
+    const Y_MAX = 1.25;
+    const Y_RANGE = Y_MAX - Y_MIN;
+    const mapY = (v) => H - ((v - Y_MIN) / Y_RANGE) * H;
+    const mapX = (t) => t * W;
 
     ctx.clearRect(0, 0, W, H);
 
-    ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--border').trim();
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    for (let i = 0; i <= 4; i++) {
-      const y = i * (H / 4);
-      ctx.moveTo(0, y);
-      ctx.lineTo(W, y);
-    }
-    ctx.stroke();
+    const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    const borderColor = cssVar('--border');
+    const textMuted = cssVar('--text-muted');
 
-    const mapY = (val) => H - val * H;
-    const mapX = (t) => t * W;
+    ctx.fillStyle = 'rgba(0,0,0,0.04)';
+    ctx.fillRect(0, 0, W, mapY(1.0));
+    ctx.fillRect(0, mapY(0.0), W, H - mapY(0.0));
+
+    const gridLines = [
+      { v: 1.25, label: null, major: false },
+      { v: 1.0, label: '1.0', major: true },
+      { v: 0.75, label: null, major: false },
+      { v: 0.5, label: '0.5', major: false },
+      { v: 0.25, label: null, major: false },
+      { v: 0.0, label: '0.0', major: true },
+      { v: -0.25, label: null, major: false },
+    ];
+
+    gridLines.forEach(({ v, label, major }) => {
+      const y = mapY(v);
+      ctx.beginPath();
+      ctx.moveTo(label ? 30 : 0, y);
+      ctx.lineTo(W, y);
+      ctx.strokeStyle = major ? borderColor : `${borderColor}88`;
+      ctx.lineWidth = major ? 1 : 0.5;
+      ctx.stroke();
+      if (label) {
+        ctx.fillStyle = textMuted;
+        ctx.font = '10px Basier Square, monospace';
+        ctx.textAlign = 'right';
+        ctx.fillText(label, 26, y + 3.5);
+      }
+    });
 
     const drawData = (fn, color) => {
       ctx.beginPath();
       ctx.strokeStyle = color;
       ctx.lineWidth = 1;
-      ctx.globalAlpha = 0.25;
+      ctx.globalAlpha = 0.2;
       samples.forEach((s, i) => {
         const t = i / (samples.length - 1);
-        const y = mapY(fn(s));
-        if (i === 0) ctx.moveTo(mapX(t), y);
-        else ctx.lineTo(mapX(t), y);
+        if (i === 0) ctx.moveTo(mapX(t), mapY(fn(s)));
+        else ctx.lineTo(mapX(t), mapY(fn(s)));
       });
       ctx.stroke();
       ctx.globalAlpha = 1.0;
@@ -926,7 +962,6 @@ const App = () => {
     drawData((s) => s.g, '#22c55e');
     drawData((s) => s.b, '#3b82f6');
 
-    // Draw sample dots for palette mode
     if (samples.length <= 12) {
       ['r', 'g', 'b'].forEach((ch, ci) => {
         const color = ['#ef4444', '#22c55e', '#3b82f6'][ci];
@@ -943,9 +978,9 @@ const App = () => {
     const drawFit = (channel, color) => {
       ctx.beginPath();
       ctx.strokeStyle = color;
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 2;
       ctx.lineJoin = 'round';
-      for (let x = 0; x <= W; x += 2) {
+      for (let x = 0; x <= W; x++) {
         const t = x / W;
         const c = evalColor(coeffs, t, mode);
         if (x === 0) ctx.moveTo(x, mapY(c[channel]));
@@ -1094,14 +1129,18 @@ const App = () => {
   }, [appMode]);
 
   return (
-    <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] p-4 md:p-8">
-      <div className="max-w-5xl mx-auto">
+    <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] p-4 md:p-6">
+      <div className="max-w-[1500px] mx-auto">
         <header className="mb-8">
           <div className="flex items-baseline gap-4">
-            <h1 className="text-2xl font-bold text-[var(--text)] tracking-tight">Gradient Fitter</h1>
-            <span className="text-[10px] text-[var(--text-muted)] font-semibold tracking-widest uppercase">GLSL Generator</span>
+            <h1 className="text-2xl font-bold text-[var(--text)] tracking-normal">Gradient Fitter</h1>
+            <span className="text-[10px] text-[var(--text-muted)] font-semibold tracking-widest uppercase">
+              GLSL Generator
+            </span>
           </div>
-          <p className="text-[var(--text-secondary)] mt-1 text-xs tracking-wide">Convert images to GLSL gradient functions.</p>
+          <p className="text-[var(--text-secondary)] mt-1 text-xs tracking-wide">
+            Convert images to GLSL gradient functions.
+          </p>
 
           {/* Top-level mode selector */}
           <div className="flex border-b border-[var(--border)] mt-5 gap-0">
@@ -1128,438 +1167,444 @@ const App = () => {
           </div>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="space-y-4 min-w-0">
-            {/* IMAGE */}
-            <div className="bg-[var(--surface)] p-5 border border-[var(--border)] rounded-sm">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="font-semibold text-[var(--text)] text-[10px] uppercase tracking-widest">
-                  {appMode === 'line' ? (imageSrc ? 'Sample Line' : 'Input') : 'Palette Source'}
-                </h2>
-                <label className="text-[10px] font-semibold bg-[var(--text)] text-[var(--bg)] px-3 py-1.5 rounded-sm cursor-pointer hover:bg-[var(--text-hover)] tracking-widest uppercase transition-colors">
-                  {imageSrc ? 'Change' : 'Upload'}
-                  <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-                </label>
-              </div>
-
-              <div className="relative flex justify-center items-center bg-[var(--bg)] border-2 border-dashed border-[var(--border-strong)] overflow-hidden min-h-[200px] select-none">
-                {!imageSrc && (
-                  <div className="text-[var(--text-muted)] flex flex-col items-center gap-2 pointer-events-none">
-                    <Upload className="w-10 h-10 opacity-25" />
-                    <span className="text-xs font-semibold tracking-widest uppercase">Upload an image</span>
-                    <span className="text-[10px] opacity-60 tracking-wider">PNG · JPG · WebP</span>
-                  </div>
-                )}
-                <canvas ref={canvasRef} className="hidden" />
-                <canvas
-                  ref={uiCanvasRef}
-                  className={`max-w-full touch-none ${!imageSrc ? 'hidden' : 'block'} ${appMode === 'line' ? 'cursor-crosshair' : 'cursor-default'}`}
-                  onMouseDown={handleMouseDown}
-                  onMouseMove={handleMouseMove}
-                  onMouseUp={handleMouseUp}
-                  onMouseLeave={handleMouseUp}
-                />
-              </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-[1fr_280px_1.5fr] gap-5 items-start">
+          {/* IMAGE */}
+          <div className="bg-[var(--surface)] p-5 border border-[var(--border)] rounded-sm">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="font-semibold text-[var(--text)] text-[10px] uppercase tracking-widest">
+                {appMode === 'line' ? (imageSrc ? 'Sample Line' : 'Input') : 'Palette Source'}
+              </h2>
+              <label className="text-[10px] font-semibold bg-[var(--text)] text-[var(--bg)] px-3 py-1.5 rounded-sm cursor-pointer hover:bg-[var(--text-hover)] tracking-widest uppercase transition-colors">
+                {imageSrc ? 'Change' : 'Upload'}
+                <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+              </label>
             </div>
 
-            {/* Settings */}
-            <div className="bg-[var(--surface)] p-5 border border-[var(--border)] rounded-sm">
-              <div className="space-y-5">
-                {/* Fit mode toggle — line mode only */}
-                {appMode === 'line' && (
-                  <div className="space-y-3">
-                    <div className="flex bg-[var(--surface-muted)] p-0.5 rounded-sm">
-                      <button
-                        onClick={() => setFitMode('poly')}
-                        className={`flex-1 py-1.5 text-[10px] rounded-sm font-semibold tracking-widest uppercase transition-all ${
-                          fitMode === 'poly' ? 'bg-[var(--surface)] text-[var(--accent)]' : 'text-[var(--text-muted)] hover:text-[var(--text)]'
-                        }`}
-                      >
-                        Polynomial
-                      </button>
-                      <button
-                        onClick={() => setFitMode('cosine')}
-                        className={`flex-1 py-1.5 text-[10px] rounded-sm font-semibold tracking-widest uppercase transition-all ${
-                          fitMode === 'cosine' ? 'bg-[var(--surface)] text-[var(--accent)]' : 'text-[var(--text-muted)] hover:text-[var(--text)]'
-                        }`}
-                      >
-                        Cosine
-                      </button>
-                    </div>
-                    {fitMode === 'poly' && (
-                      <div className="flex items-center gap-4">
-                        <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-16 uppercase tracking-wider">
-                          Degree
-                        </label>
-                        <input
-                          type="range"
-                          min="1"
-                          max="6"
-                          step="1"
-                          value={degree}
-                          onChange={(e) => setDegree(parseInt(e.target.value))}
-                          className="flex-1 h-1 bg-[var(--border)] rounded cursor-pointer accent-[var(--accent)]"
-                        />
-                        <span className="text-xs font-mono bg-[var(--accent-bg)] text-[var(--accent)] px-2 py-0.5 rounded-sm">
-                          {degree}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                )}
+            <div className="relative flex justify-center items-center bg-[var(--bg)] border-2 border-dashed border-[var(--border-strong)] overflow-hidden min-h-[200px] select-none">
+              {!imageSrc && (
+                <div className="text-[var(--text-muted)] flex flex-col items-center gap-2 pointer-events-none">
+                  <Upload className="w-10 h-10 opacity-25" />
+                  <span className="text-xs font-semibold tracking-widest uppercase">Upload an image</span>
+                  <span className="text-[10px] opacity-60 tracking-wider">PNG · JPG · WebP</span>
+                </div>
+              )}
+              <canvas ref={canvasRef} className="hidden" />
+              <canvas
+                ref={uiCanvasRef}
+                className={`max-w-full touch-none ${!imageSrc ? 'hidden' : 'block'} ${appMode === 'line' ? 'cursor-crosshair' : 'cursor-default'}`}
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseUp}
+              />
+            </div>
+          </div>
 
-                {/* Image Processing */}
-                <div className="space-y-3 p-4 bg-[var(--bg)] rounded-sm border border-[var(--border)]">
-                  <h3 className="text-[10px] font-semibold text-[var(--text-muted)] flex items-center gap-2 uppercase tracking-widest">
-                    <Sliders className="w-3 h-3" /> Image Processing
-                  </h3>
-                  <div className="flex items-center gap-4">
-                    <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-16 uppercase tracking-wider">
-                      Contrast
-                    </label>
+          {/* Settings */}
+          <div className="bg-[var(--surface)] p-5 border border-[var(--border)] rounded-sm lg:col-start-1 lg:row-start-2 xl:col-start-2 xl:row-start-1">
+            <div className="space-y-5">
+              {/* Fit mode toggle — line mode only */}
+              {appMode === 'line' && (
+                <div className="space-y-3">
+                  <div className="flex bg-[var(--surface-muted)] p-0.5 rounded-sm">
+                    <button
+                      onClick={() => setFitMode('poly')}
+                      className={`flex-1 py-1.5 text-[10px] rounded-sm font-semibold tracking-widest uppercase transition-all ${
+                        fitMode === 'poly'
+                          ? 'bg-[var(--surface)] text-[var(--accent)]'
+                          : 'text-[var(--text-muted)] hover:text-[var(--text)]'
+                      }`}
+                    >
+                      Polynomial
+                    </button>
+                    <button
+                      onClick={() => setFitMode('cosine')}
+                      className={`flex-1 py-1.5 text-[10px] rounded-sm font-semibold tracking-widest uppercase transition-all ${
+                        fitMode === 'cosine'
+                          ? 'bg-[var(--surface)] text-[var(--accent)]'
+                          : 'text-[var(--text-muted)] hover:text-[var(--text)]'
+                      }`}
+                    >
+                      Cosine
+                    </button>
+                  </div>
+                  {fitMode === 'poly' && (
+                    <div className="flex items-center gap-4">
+                      <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-16 uppercase tracking-wider">
+                        Degree
+                      </label>
+                      <input
+                        type="range"
+                        min="1"
+                        max="6"
+                        step="1"
+                        value={degree}
+                        onChange={(e) => setDegree(parseInt(e.target.value))}
+                        className="flex-1 h-1 bg-[var(--border)] rounded cursor-pointer accent-[var(--accent)]"
+                      />
+                      <span className="text-xs font-mono bg-[var(--accent-bg)] text-[var(--accent)] px-2 py-0.5 rounded-sm">
+                        {degree}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Image Processing */}
+              <div className="space-y-3 p-4 bg-[var(--bg)] rounded-sm border border-[var(--border)]">
+                <h3 className="text-[10px] font-semibold text-[var(--text-muted)] flex items-center gap-2 uppercase tracking-widest">
+                  <Sliders className="w-3 h-3" /> Image Processing
+                </h3>
+                <div className="flex items-center gap-4">
+                  <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-16 uppercase tracking-wider">
+                    Contrast
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="2"
+                    step="0.1"
+                    value={contrast}
+                    onChange={(e) => setContrast(parseFloat(e.target.value))}
+                    className="flex-1 h-1 bg-[var(--border)] rounded appearance-none cursor-pointer accent-[var(--accent)]"
+                  />
+                  <span className="text-xs w-8 text-right font-mono text-[var(--text-secondary)]">
+                    {contrast.toFixed(1)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-16 uppercase tracking-wider">
+                    Levels
+                  </label>
+                  <div className="flex-1 flex gap-2">
                     <input
                       type="range"
                       min="0"
-                      max="2"
-                      step="0.1"
-                      value={contrast}
-                      onChange={(e) => setContrast(parseFloat(e.target.value))}
+                      max="255"
+                      step="1"
+                      value={minLevel}
+                      onChange={(e) => setMinLevel(Math.min(parseInt(e.target.value), maxLevel - 5))}
                       className="flex-1 h-1 bg-[var(--border)] rounded appearance-none cursor-pointer accent-[var(--accent)]"
                     />
-                    <span className="text-xs w-8 text-right font-mono text-[var(--text-secondary)]">{contrast.toFixed(1)}</span>
+                    <input
+                      type="range"
+                      min="0"
+                      max="255"
+                      step="1"
+                      value={maxLevel}
+                      onChange={(e) => setMaxLevel(Math.max(parseInt(e.target.value), minLevel + 5))}
+                      className="flex-1 h-1 bg-[var(--border)] rounded appearance-none cursor-pointer accent-[var(--accent)]"
+                    />
                   </div>
-                  <div className="flex items-center gap-4">
-                    <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-16 uppercase tracking-wider">
-                      Levels
-                    </label>
-                    <div className="flex-1 flex gap-2">
-                      <input
-                        type="range"
-                        min="0"
-                        max="255"
-                        step="1"
-                        value={minLevel}
-                        onChange={(e) => setMinLevel(Math.min(parseInt(e.target.value), maxLevel - 5))}
-                        className="flex-1 h-1 bg-[var(--border)] rounded appearance-none cursor-pointer accent-[var(--accent)]"
-                      />
-                      <input
-                        type="range"
-                        min="0"
-                        max="255"
-                        step="1"
-                        value={maxLevel}
-                        onChange={(e) => setMaxLevel(Math.max(parseInt(e.target.value), minLevel + 5))}
-                        className="flex-1 h-1 bg-[var(--border)] rounded appearance-none cursor-pointer accent-[var(--accent)]"
-                      />
-                    </div>
-                    <div className="flex flex-col text-[10px] w-8 text-right leading-3 font-mono text-[var(--text-secondary)]">
-                      <span>{maxLevel}</span>
-                      <span className="text-[var(--text-muted)]">{minLevel}</span>
-                    </div>
+                  <div className="flex flex-col text-[10px] w-8 text-right leading-3 font-mono text-[var(--text-secondary)]">
+                    <span>{maxLevel}</span>
+                    <span className="text-[var(--text-muted)]">{minLevel}</span>
                   </div>
                 </div>
+              </div>
 
-                {/* Palette controls */}
-                {appMode === 'palette' && (
-                  <div className="space-y-3">
-                    <h3 className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-widest">
-                      Palette Settings
-                    </h3>
-                    {/* Extraction group */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-[9px] font-semibold text-[var(--text-muted)] uppercase tracking-widest">
-                        Extraction
-                      </span>
-                      <div className="flex-1 border-t border-[var(--border)]" />
-                    </div>
-                    <div className="flex bg-[var(--surface-muted)] p-0.5 rounded-sm">
-                      <button
-                        onClick={() => setPaletteMethod('dominant')}
-                        className={`flex-1 py-1.5 text-[10px] rounded-sm font-semibold tracking-widest uppercase transition-all ${
-                          paletteMethod === 'dominant'
-                            ? 'bg-[var(--surface)] text-[var(--accent)]'
-                            : 'text-[var(--text-muted)] hover:text-[var(--text)]'
-                        }`}
-                      >
-                        Dominant
-                      </button>
-                      <button
-                        onClick={() => setPaletteMethod('generative')}
-                        className={`flex-1 py-1.5 text-[10px] rounded-sm font-semibold tracking-widest uppercase transition-all ${
-                          paletteMethod === 'generative'
-                            ? 'bg-[var(--surface)] text-[var(--accent)]'
-                            : 'text-[var(--text-muted)] hover:text-[var(--text)]'
-                        }`}
-                      >
-                        Generative
-                      </button>
-                      <button
-                        onClick={() => setPaletteMethod('api')}
-                        className={`flex-1 py-1.5 text-[10px] rounded-sm font-semibold tracking-widest uppercase transition-all ${
-                          paletteMethod === 'api'
-                            ? 'bg-[var(--surface)] text-[var(--accent)]'
-                            : 'text-[var(--text-muted)] hover:text-[var(--text)]'
-                        }`}
-                      >
-                        API
-                      </button>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <p className="text-[10px] text-[var(--text-muted)] leading-relaxed">
-                        {paletteMethod === 'dominant' &&
-                          'Ranks colors by pixel coverage — most frequent colors first. Deterministic.'}
-                        {paletteMethod === 'generative' &&
-                          'Runs k-means 24× on random pixel subsets, picks the run with best color spread. Varies on regenerate.'}
-                        {paletteMethod === 'api' &&
-                          `Colormind AI palette — ${apiSeedCount} color${apiSeedCount !== 1 ? 's' : ''} locked from image, ${5 - apiSeedCount} generated by AI. Always 5 colors. Varies on regenerate.`}
-                      </p>
-                      {(paletteMethod === 'generative' || paletteMethod === 'api') && imageSrc && (
-                        <button
-                          onClick={performPaletteFit}
-                          className="flex items-center gap-1 text-[10px] bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white px-2.5 py-1 rounded-sm ml-3 shrink-0 tracking-widest uppercase font-semibold transition-colors"
-                        >
-                          <RefreshCw className="w-3 h-3" /> Regenerate
-                        </button>
-                      )}
-                    </div>
-                    {paletteMethod === 'api' && (
-                      <>
-                        <div className="flex items-center gap-3">
-                          <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 shrink-0 uppercase tracking-wider">
-                            Model
-                          </label>
-                          <select
-                            value={apiModel}
-                            onChange={(e) => setApiModel(e.target.value)}
-                            className="flex-1 text-xs bg-[var(--bg)] border border-[var(--border)] rounded-sm px-2 py-1 text-[var(--text)] cursor-pointer focus:outline-none focus:border-[var(--accent)]"
-                          >
-                            {apiModels.map((m) => (
-                              <option key={m} value={m}>
-                                {m}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 uppercase tracking-wider">
-                            Img seeds
-                          </label>
-                          <input
-                            type="range"
-                            min="1"
-                            max="4"
-                            step="1"
-                            value={apiSeedCount}
-                            onChange={(e) => setApiSeedCount(parseInt(e.target.value))}
-                            className="flex-1 h-1 bg-[var(--border)] rounded cursor-pointer accent-[var(--accent)]"
-                          />
-                          <span className="text-xs font-mono bg-[var(--accent-bg)] text-[var(--accent)] px-2 py-0.5 rounded-sm">
-                            {apiSeedCount} / 5
-                          </span>
-                        </div>
-                      </>
-                    )}
-                    {/* Fit group */}
-                    <div className="flex items-center gap-2 pt-1">
-                      <span className="text-[9px] font-semibold text-[var(--text-muted)] uppercase tracking-widest">
-                        Fit Function
-                      </span>
-                      <div className="flex-1 border-t border-[var(--border)]" />
-                    </div>
-                    <div className="flex bg-[var(--surface-muted)] p-0.5 rounded-sm">
-                      <button
-                        onClick={() => setPaletteFitMode('cosine')}
-                        className={`flex-1 py-1.5 text-[9px] rounded-sm font-semibold tracking-widest uppercase transition-all ${
-                          paletteFitMode === 'cosine'
-                            ? 'bg-[var(--surface)] text-[var(--accent)]'
-                            : 'text-[var(--text-muted)] hover:text-[var(--text)]'
-                        }`}
-                      >
-                        Cosine
-                      </button>
-                      <button
-                        onClick={() => setPaletteFitMode('poly')}
-                        className={`flex-1 py-1.5 text-[9px] rounded-sm font-semibold tracking-widest uppercase transition-all ${
-                          paletteFitMode === 'poly'
-                            ? 'bg-[var(--surface)] text-[var(--accent)]'
-                            : 'text-[var(--text-muted)] hover:text-[var(--text)]'
-                        }`}
-                      >
-                        Poly
-                      </button>
-                      <button
-                        onClick={() => setPaletteFitMode('linear')}
-                        className={`flex-1 py-1.5 text-[9px] rounded-sm font-semibold tracking-widest uppercase transition-all ${
-                          paletteFitMode === 'linear'
-                            ? 'bg-[var(--surface)] text-[var(--accent)]'
-                            : 'text-[var(--text-muted)] hover:text-[var(--text)]'
-                        }`}
-                      >
-                        Linear
-                      </button>
-                      <button
-                        onClick={() => setPaletteFitMode('steps')}
-                        className={`flex-1 py-1.5 text-[9px] rounded-sm font-semibold tracking-widest uppercase transition-all ${
-                          paletteFitMode === 'steps'
-                            ? 'bg-[var(--surface)] text-[var(--accent)]'
-                            : 'text-[var(--text-muted)] hover:text-[var(--text)]'
-                        }`}
-                      >
-                        Steps
-                      </button>
-                      <button
-                        onClick={() => setPaletteFitMode('catmull')}
-                        className={`flex-1 py-1.5 text-[9px] rounded-sm font-semibold tracking-widest uppercase transition-all ${
-                          paletteFitMode === 'catmull'
-                            ? 'bg-[var(--surface)] text-[var(--accent)]'
-                            : 'text-[var(--text-muted)] hover:text-[var(--text)]'
-                        }`}
-                      >
-                        Catmull
-                      </button>
-                    </div>
+              {/* Palette controls */}
+              {appMode === 'palette' && (
+                <div className="space-y-3">
+                  <h3 className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-widest">
+                    Palette Settings
+                  </h3>
+                  {/* Extraction group */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] font-semibold text-[var(--text-muted)] uppercase tracking-widest">
+                      Extraction
+                    </span>
+                    <div className="flex-1 border-t border-[var(--border)]" />
+                  </div>
+                  <div className="flex bg-[var(--surface-muted)] p-0.5 rounded-sm">
+                    <button
+                      onClick={() => setPaletteMethod('dominant')}
+                      className={`flex-1 py-1.5 text-[10px] rounded-sm font-semibold tracking-widest uppercase transition-all ${
+                        paletteMethod === 'dominant'
+                          ? 'bg-[var(--surface)] text-[var(--accent)]'
+                          : 'text-[var(--text-muted)] hover:text-[var(--text)]'
+                      }`}
+                    >
+                      Dominant
+                    </button>
+                    <button
+                      onClick={() => setPaletteMethod('generative')}
+                      className={`flex-1 py-1.5 text-[10px] rounded-sm font-semibold tracking-widest uppercase transition-all ${
+                        paletteMethod === 'generative'
+                          ? 'bg-[var(--surface)] text-[var(--accent)]'
+                          : 'text-[var(--text-muted)] hover:text-[var(--text)]'
+                      }`}
+                    >
+                      Generative
+                    </button>
+                    <button
+                      onClick={() => setPaletteMethod('api')}
+                      className={`flex-1 py-1.5 text-[10px] rounded-sm font-semibold tracking-widest uppercase transition-all ${
+                        paletteMethod === 'api'
+                          ? 'bg-[var(--surface)] text-[var(--accent)]'
+                          : 'text-[var(--text-muted)] hover:text-[var(--text)]'
+                      }`}
+                    >
+                      API
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between">
                     <p className="text-[10px] text-[var(--text-muted)] leading-relaxed">
-                      {paletteFitMode === 'cosine' &&
-                        'Fits a + b·cos(2π(ct+d)) per channel. Smooth, loops perfectly with locked freq. Best for organic gradients.'}
-                      {paletteFitMode === 'poly' &&
-                        'Least-squares polynomial through the colors. Can overshoot — use clamp. Higher degree = more flexibility, more risk of artifacts.'}
-                      {paletteFitMode === 'linear' &&
-                        'Direct mix() between color stops. Exact colors, no overshoot. Weight dominance stretches dominant colors across more t-range.'}
-                      {paletteFitMode === 'steps' &&
-                        'Hard cuts between colors. Each color occupies t-range proportional to its area. Good for quantized / posterized looks.'}
-                      {paletteFitMode === 'catmull' &&
-                        'Catmull-Rom spline through colors. Smooth like cosine but passes exactly through each color. Weight dominance adjusts stop spacing.'}
+                      {paletteMethod === 'dominant' &&
+                        'Ranks colors by pixel coverage — most frequent colors first. Deterministic.'}
+                      {paletteMethod === 'generative' &&
+                        'Runs k-means 24× on random pixel subsets, picks the run with best color spread. Varies on regenerate.'}
+                      {paletteMethod === 'api' &&
+                        `Colormind AI palette — ${apiSeedCount} color${apiSeedCount !== 1 ? 's' : ''} locked from image, ${5 - apiSeedCount} generated by AI. Always 5 colors. Varies on regenerate.`}
                     </p>
-                    {paletteFitMode === 'poly' && (
+                    {(paletteMethod === 'generative' || paletteMethod === 'api') && imageSrc && (
+                      <button
+                        onClick={performPaletteFit}
+                        className="flex items-center gap-1 text-[10px] bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white px-2.5 py-1 rounded-sm ml-3 shrink-0 tracking-widest uppercase font-semibold transition-colors"
+                      >
+                        <RefreshCw className="w-3 h-3" /> Regenerate
+                      </button>
+                    )}
+                  </div>
+                  {paletteMethod === 'api' && (
+                    <>
+                      <div className="flex items-center gap-3">
+                        <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 shrink-0 uppercase tracking-wider">
+                          Model
+                        </label>
+                        <select
+                          value={apiModel}
+                          onChange={(e) => setApiModel(e.target.value)}
+                          className="flex-1 text-xs bg-[var(--bg)] border border-[var(--border)] rounded-sm px-2 py-1 text-[var(--text)] cursor-pointer focus:outline-none focus:border-[var(--accent)]"
+                        >
+                          {apiModels.map((m) => (
+                            <option key={m} value={m}>
+                              {m}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                       <div className="flex items-center gap-4">
-                        <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-16 uppercase tracking-wider">
-                          Degree
+                        <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 uppercase tracking-wider">
+                          Img seeds
                         </label>
                         <input
                           type="range"
                           min="1"
-                          max="6"
+                          max="4"
                           step="1"
-                          value={degree}
-                          onChange={(e) => setDegree(parseInt(e.target.value))}
+                          value={apiSeedCount}
+                          onChange={(e) => setApiSeedCount(parseInt(e.target.value))}
                           className="flex-1 h-1 bg-[var(--border)] rounded cursor-pointer accent-[var(--accent)]"
                         />
                         <span className="text-xs font-mono bg-[var(--accent-bg)] text-[var(--accent)] px-2 py-0.5 rounded-sm">
-                          {degree}
+                          {apiSeedCount} / 5
                         </span>
                       </div>
-                    )}
-                    {paletteMethod !== 'api' && (
-                      <div className="flex items-center gap-4">
-                        <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 uppercase tracking-wider">
-                          Colors
-                        </label>
-                        <input
-                          type="range"
-                          min="3"
-                          max="7"
-                          step="1"
-                          value={colorCount}
-                          onChange={(e) => setColorCount(parseInt(e.target.value))}
-                          className="flex-1 h-1 bg-[var(--border)] rounded cursor-pointer accent-[var(--accent)]"
+                    </>
+                  )}
+                  {/* Fit group */}
+                  <div className="flex items-center gap-2 pt-1">
+                    <span className="text-[9px] font-semibold text-[var(--text-muted)] uppercase tracking-widest">
+                      Fit Function
+                    </span>
+                    <div className="flex-1 border-t border-[var(--border)]" />
+                  </div>
+                  <div className="flex bg-[var(--surface-muted)] p-0.5 rounded-sm">
+                    <button
+                      onClick={() => setPaletteFitMode('cosine')}
+                      className={`flex-1 py-1.5 text-[9px] rounded-sm font-semibold tracking-widest uppercase transition-all ${
+                        paletteFitMode === 'cosine'
+                          ? 'bg-[var(--surface)] text-[var(--accent)]'
+                          : 'text-[var(--text-muted)] hover:text-[var(--text)]'
+                      }`}
+                    >
+                      Cosine
+                    </button>
+                    <button
+                      onClick={() => setPaletteFitMode('poly')}
+                      className={`flex-1 py-1.5 text-[9px] rounded-sm font-semibold tracking-widest uppercase transition-all ${
+                        paletteFitMode === 'poly'
+                          ? 'bg-[var(--surface)] text-[var(--accent)]'
+                          : 'text-[var(--text-muted)] hover:text-[var(--text)]'
+                      }`}
+                    >
+                      Poly
+                    </button>
+                    <button
+                      onClick={() => setPaletteFitMode('linear')}
+                      className={`flex-1 py-1.5 text-[9px] rounded-sm font-semibold tracking-widest uppercase transition-all ${
+                        paletteFitMode === 'linear'
+                          ? 'bg-[var(--surface)] text-[var(--accent)]'
+                          : 'text-[var(--text-muted)] hover:text-[var(--text)]'
+                      }`}
+                    >
+                      Linear
+                    </button>
+                    <button
+                      onClick={() => setPaletteFitMode('steps')}
+                      className={`flex-1 py-1.5 text-[9px] rounded-sm font-semibold tracking-widest uppercase transition-all ${
+                        paletteFitMode === 'steps'
+                          ? 'bg-[var(--surface)] text-[var(--accent)]'
+                          : 'text-[var(--text-muted)] hover:text-[var(--text)]'
+                      }`}
+                    >
+                      Steps
+                    </button>
+                    <button
+                      onClick={() => setPaletteFitMode('catmull')}
+                      className={`flex-1 py-1.5 text-[9px] rounded-sm font-semibold tracking-widest uppercase transition-all ${
+                        paletteFitMode === 'catmull'
+                          ? 'bg-[var(--surface)] text-[var(--accent)]'
+                          : 'text-[var(--text-muted)] hover:text-[var(--text)]'
+                      }`}
+                    >
+                      Catmull
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-[var(--text-muted)] leading-relaxed">
+                    {paletteFitMode === 'cosine' &&
+                      'Fits a + b·cos(2π(ct+d)) per channel. Smooth, loops perfectly with locked freq. Best for organic gradients.'}
+                    {paletteFitMode === 'poly' &&
+                      'Least-squares polynomial through the colors. Can overshoot — use clamp. Higher degree = more flexibility, more risk of artifacts.'}
+                    {paletteFitMode === 'linear' &&
+                      'Direct mix() between color stops. Exact colors, no overshoot. Weight dominance stretches dominant colors across more t-range.'}
+                    {paletteFitMode === 'steps' &&
+                      'Hard cuts between colors. Each color occupies t-range proportional to its area. Good for quantized / posterized looks.'}
+                    {paletteFitMode === 'catmull' &&
+                      'Catmull-Rom spline through colors. Smooth like cosine but passes exactly through each color. Weight dominance adjusts stop spacing.'}
+                  </p>
+                  {paletteFitMode === 'poly' && (
+                    <div className="flex items-center gap-4">
+                      <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-16 uppercase tracking-wider">
+                        Degree
+                      </label>
+                      <input
+                        type="range"
+                        min="1"
+                        max="6"
+                        step="1"
+                        value={degree}
+                        onChange={(e) => setDegree(parseInt(e.target.value))}
+                        className="flex-1 h-1 bg-[var(--border)] rounded cursor-pointer accent-[var(--accent)]"
+                      />
+                      <span className="text-xs font-mono bg-[var(--accent-bg)] text-[var(--accent)] px-2 py-0.5 rounded-sm">
+                        {degree}
+                      </span>
+                    </div>
+                  )}
+                  {paletteMethod !== 'api' && (
+                    <div className="flex items-center gap-4">
+                      <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 uppercase tracking-wider">
+                        Colors
+                      </label>
+                      <input
+                        type="range"
+                        min="3"
+                        max="7"
+                        step="1"
+                        value={colorCount}
+                        onChange={(e) => setColorCount(parseInt(e.target.value))}
+                        className="flex-1 h-1 bg-[var(--border)] rounded cursor-pointer accent-[var(--accent)]"
+                      />
+                      <span className="text-xs font-mono bg-[var(--accent-bg)] text-[var(--accent)] px-2 py-0.5 rounded-sm">
+                        {colorCount}
+                      </span>
+                    </div>
+                  )}
+                  {paletteFitMode === 'cosine' && (
+                    <div className="flex items-center gap-3">
+                      <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 uppercase tracking-wider">
+                        Lock freq
+                      </label>
+                      <button
+                        onClick={() => setLockFrequency((v) => !v)}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                          lockFrequency ? 'bg-[var(--accent)]' : 'bg-[var(--border-strong)]'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+                            lockFrequency ? 'translate-x-4' : 'translate-x-1'
+                          }`}
                         />
-                        <span className="text-xs font-mono bg-[var(--accent-bg)] text-[var(--accent)] px-2 py-0.5 rounded-sm">
-                          {colorCount}
-                        </span>
-                      </div>
-                    )}
-                    {paletteFitMode === 'cosine' && (
-                      <div className="flex items-center gap-3">
-                        <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 uppercase tracking-wider">
-                          Lock freq
-                        </label>
-                        <button
-                          onClick={() => setLockFrequency((v) => !v)}
-                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                            lockFrequency ? 'bg-[var(--accent)]' : 'bg-[var(--border-strong)]'
+                      </button>
+                      <span className="text-[10px] text-[var(--text-muted)]">
+                        {lockFrequency ? 'Integer c (perfect loop)' : 'Free float c'}
+                      </span>
+                    </div>
+                  )}
+                  {(paletteFitMode === 'linear' || paletteFitMode === 'catmull') && paletteMethod !== 'api' && (
+                    <div className="flex items-center gap-3">
+                      <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 uppercase tracking-wider">
+                        Weight dom.
+                      </label>
+                      <button
+                        onClick={() => setWeightDominance((v) => !v)}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                          weightDominance ? 'bg-[var(--accent)]' : 'bg-[var(--border-strong)]'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+                            weightDominance ? 'translate-x-4' : 'translate-x-1'
                           }`}
-                        >
-                          <span
-                            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
-                              lockFrequency ? 'translate-x-4' : 'translate-x-1'
-                            }`}
-                          />
-                        </button>
-                        <span className="text-[10px] text-[var(--text-muted)]">
-                          {lockFrequency ? 'Integer c (perfect loop)' : 'Free float c'}
-                        </span>
-                      </div>
-                    )}
-                    {(paletteFitMode === 'linear' || paletteFitMode === 'catmull') && paletteMethod !== 'api' && (
-                      <div className="flex items-center gap-3">
-                        <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 uppercase tracking-wider">
-                          Weight dom.
-                        </label>
-                        <button
-                          onClick={() => setWeightDominance((v) => !v)}
-                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                            weightDominance ? 'bg-[var(--accent)]' : 'bg-[var(--border-strong)]'
-                          }`}
-                        >
-                          <span
-                            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
-                              weightDominance ? 'translate-x-4' : 'translate-x-1'
-                            }`}
-                          />
-                        </button>
-                        <span className="text-[10px] text-[var(--text-muted)]">{weightDominance ? 't ∝ area' : 'Uniform t'}</span>
-                      </div>
-                    )}
+                        />
+                      </button>
+                      <span className="text-[10px] text-[var(--text-muted)]">
+                        {weightDominance ? 't ∝ area' : 'Uniform t'}
+                      </span>
+                    </div>
+                  )}
 
-                    {/* Extracted color swatches — always mounted so refs are valid */}
-                    <div className={`space-y-1 ${extractedColors.length === 0 ? 'hidden' : ''}`}>
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-[9px] font-semibold text-[var(--text-muted)] uppercase tracking-widest">
-                          Extracted Points
-                        </h4>
-                        <button
-                          onClick={shuffleColors}
-                          className="flex items-center gap-1 text-[9px] bg-[var(--text)] hover:bg-[var(--text-hover)] text-[var(--bg)] px-2 py-0.5 rounded-sm transition-colors tracking-wider uppercase font-semibold"
-                        >
-                          <Shuffle className="w-3 h-3" /> Shuffle
-                        </button>
-                      </div>
-                      <div className="overflow-hidden border border-[var(--border)] h-12">
-                        <canvas ref={paletteSwatchRef} width={500} height={48} className="w-full h-full" />
-                      </div>
-                      <h4 className="text-[9px] font-semibold text-[var(--text-muted)] uppercase tracking-widest pt-1">
-                        Fitted Gradient
+                  {/* Extracted color swatches — always mounted so refs are valid */}
+                  <div className={`space-y-1 ${extractedColors.length === 0 ? 'hidden' : ''}`}>
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-[9px] font-semibold text-[var(--text-muted)] uppercase tracking-widest">
+                        Extracted Points
                       </h4>
-                      <div className="overflow-hidden border border-[var(--border)] h-12">
-                        <canvas ref={paletteGradientRef} width={500} height={48} className="w-full h-full" />
-                      </div>
+                      <button
+                        onClick={shuffleColors}
+                        className="flex items-center gap-1 text-[9px] bg-[var(--text)] hover:bg-[var(--text-hover)] text-[var(--bg)] px-2 py-0.5 rounded-sm transition-colors tracking-wider uppercase font-semibold"
+                      >
+                        <Shuffle className="w-3 h-3" /> Shuffle
+                      </button>
+                    </div>
+                    <div className="overflow-hidden border border-[var(--border)] h-12">
+                      <canvas ref={paletteSwatchRef} width={500} height={48} className="w-full h-full" />
+                    </div>
+                    <h4 className="text-[9px] font-semibold text-[var(--text-muted)] uppercase tracking-widest pt-1">
+                      Fitted Gradient
+                    </h4>
+                    <div className="overflow-hidden border border-[var(--border)] h-12">
+                      <canvas ref={paletteGradientRef} width={500} height={48} className="w-full h-full" />
                     </div>
                   </div>
-                )}
-              </div>
-            </div>
-
-            {/* ANALYSIS GRAPH */}
-            <div className="bg-[var(--surface)] p-5 border border-[var(--border)] rounded-sm">
-              <h2 className="font-semibold text-[var(--text)] text-[10px] uppercase tracking-widest mb-4 flex items-center gap-2">
-                <Activity className="w-3 h-3 text-[var(--text-muted)]" /> RGB Channels
-              </h2>
-              <div className="w-full h-48 bg-[var(--bg)] border border-[var(--border)] overflow-hidden mb-4">
-                <canvas ref={graphRef} width={500} height={192} className="w-full h-full" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-[10px] font-semibold text-[var(--text-muted)] flex items-center gap-2 uppercase tracking-widest">
-                  <Eye className="w-3 h-3" /> Shader Preview
-                </h3>
-                <div className="w-full h-16 bg-[var(--border)] border border-[var(--border-strong)] overflow-hidden">
-                  <canvas ref={shaderCanvasRef} width={500} height={64} className="w-full h-full" />
                 </div>
+              )}
+            </div>
+          </div>
+
+          {/* ANALYSIS GRAPH */}
+          <div className="bg-[var(--surface)] p-5 border border-[var(--border)] rounded-sm lg:col-start-1 lg:row-start-3 xl:col-start-1 xl:row-start-2">
+            <h2 className="font-semibold text-[var(--text)] text-[10px] uppercase tracking-widest mb-4 flex items-center gap-2">
+              <Activity className="w-3 h-3 text-[var(--text-muted)]" /> RGB Channels
+            </h2>
+            <div className="w-full h-56 bg-[var(--bg)] border border-[var(--border)] overflow-hidden mb-4">
+              <canvas ref={graphRef} className="w-full h-full" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-[10px] font-semibold text-[var(--text-muted)] flex items-center gap-2 uppercase tracking-widest">
+                <Eye className="w-3 h-3" /> Shader Preview
+              </h3>
+              <div className="w-full h-16 bg-[var(--border)] border border-[var(--border-strong)] overflow-hidden">
+                <canvas ref={shaderCanvasRef} width={500} height={64} className="w-full h-full" />
               </div>
             </div>
           </div>
 
           {/* CODE OUTPUT */}
-          <div className="space-y-4 min-w-0">
+          <div className="min-w-0 lg:col-start-2 lg:row-start-1 lg:row-span-3 xl:col-start-3 xl:row-start-1 xl:row-span-2 lg:self-stretch">
             <div className="bg-[var(--code-bg)] text-[var(--code-text)] p-5 rounded-sm h-full flex flex-col overflow-hidden w-full border border-[var(--code-border)]">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="font-semibold text-[var(--code-text-strong)] text-[10px] uppercase tracking-widest flex items-center gap-2">
