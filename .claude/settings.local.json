@@ -3,7 +3,8 @@
     "allow": [
       "Bash(npm install:*)",
       "Bash(npm run:*)",
-      "WebFetch(domain:colormind.io)"
+      "WebFetch(domain:colormind.io)",
+      "Bash(ls:*)"
     ]
   }
 }

@@ -30,7 +30,7 @@ const evaluate = ({ colors, tValues }, t) => {
   };
 };
 
-const buildGLSL = ({ colors, tValues }) => {
+const buildGLSL = ({ colors, tValues }, { linearLight = false } = {}) => {
   const n = colors.length;
   const isUniform = tValues.every((tv, i) => Math.abs(tv - i / (n - 1)) < 0.001);
 
@@ -70,7 +70,10 @@ const buildGLSL = ({ colors, tValues }) => {
     code += `    vec3 p2 = stops[min(i + 1, ${n - 1})].rgb;\n`;
     code += `    vec3 p3 = stops[min(i + 2, ${n - 1})].rgb;\n`;
   }
-  code += `    return catmullRom(p0, p1, p2, p3, localT);\n}`;
+  const returnExpr = linearLight
+    ? `pow(clamp(catmullRom(p0, p1, p2, p3, localT), 0.0, 1.0), vec3(0.4545))`
+    : `catmullRom(p0, p1, p2, p3, localT)`;
+  code += `    return ${returnExpr};\n}`;
   return code;
 };
 

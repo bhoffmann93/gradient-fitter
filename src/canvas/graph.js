@@ -3,7 +3,7 @@ import { evalColor } from '../fit/index.js';
 
 const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
-export const drawGraph = (canvas, samples, coeffs, mode) => {
+export const drawGraph = (canvas, samples, coeffs, mode, linearLight = false) => {
   if (!canvas) return;
   const dpr = window.devicePixelRatio || 1;
   const W = canvas.clientWidth || 500;
@@ -88,7 +88,7 @@ export const drawGraph = (canvas, samples, coeffs, mode) => {
     ctx.lineWidth = 2;
     ctx.lineJoin = 'round';
     for (let x = 0; x <= W; x++) {
-      const c = evalColor(coeffs, x / W, mode);
+      const c = evalColor(coeffs, x / W, mode, linearLight);
       if (x === 0) ctx.moveTo(x, mapY(c[channel]));
       else ctx.lineTo(x, mapY(c[channel]));
     }

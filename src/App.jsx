@@ -1,6 +1,6 @@
 import React from 'react';
 import { DEFAULTS, IMAGE_MAX_SIZE, POINT_HIT_RADIUS } from './config.js';
-import { FIT_MODES, buildColorGLSL } from './fit/index.js';
+import { FIT_MODES, buildColorGLSL, linearize, LINEAR_LIGHT_MODES } from './fit/index.js';
 import { computeWeightedTValues } from './math/cosine.js';
 import { extractDominant, extractGenerative } from './palette/extract.js';
 import { generateColormindPalette, fetchColormindModels } from './palette/colormind.js';
@@ -29,6 +29,7 @@ const App = () => {
   const [paletteMethod, setPaletteMethod] = React.useState(DEFAULTS.paletteMethod);
   const [paletteFitMode, setPaletteFitMode] = React.useState(DEFAULTS.paletteFitMode);
   const [paletteDrawData, setPaletteDrawData] = React.useState(null);
+  const [linearLight, setLinearLight] = React.useState(DEFAULTS.linearLight);
   const [weightDominance, setWeightDominance] = React.useState(DEFAULTS.weightDominance);
   const [apiModel, setApiModel] = React.useState(DEFAULTS.apiModel);
   const [apiModels, setApiModels] = React.useState(['default', 'ui']);
@@ -111,9 +112,9 @@ const App = () => {
         if (samples.length < 2) throw new Error('Line too short');
         const result = FIT_MODES[fitMode].fit(samples, { degree });
         setCoefficients(result);
-        setGlslCode(FIT_MODES[fitMode].buildGLSL(result));
-        drawGraph(graphRef.current, samples, result, fitMode);
-        renderGradientPreview(shaderCanvasRef.current, result, fitMode);
+        setGlslCode(FIT_MODES[fitMode].buildGLSL(result, { linearLight }));
+        drawGraph(graphRef.current, samples, result, fitMode, linearLight);
+        renderGradientPreview(shaderCanvasRef.current, result, fitMode, linearLight);
         drawOverlay(uiCanvasRef.current, canvasRef.current, p1, p2);
         setStatus('done');
       } catch (e) {
@@ -126,12 +127,14 @@ const App = () => {
   const performPaletteRefit = (colors) => {
     if (!colors || colors.length < 2) return;
     const tValues = weightDominance ? computeWeightedTValues(colors) : null;
-    const result = FIT_MODES[paletteFitMode].fit(colors, { degree, lockFrequency, tValues });
+    const useLinearLight = linearLight && LINEAR_LIGHT_MODES.includes(paletteFitMode);
+    const fittingColors = useLinearLight ? colors.map(linearize) : colors;
+    const result = FIT_MODES[paletteFitMode].fit(fittingColors, { degree, lockFrequency, tValues });
     setCoefficients(result);
-    setGlslCode(FIT_MODES[paletteFitMode].buildGLSL(result) + '\n\n' + buildColorGLSL(colors));
-    drawGraph(graphRef.current, colors, result, paletteFitMode);
-    renderGradientPreview(shaderCanvasRef.current, result, paletteFitMode);
-    setPaletteDrawData({ colors, result, mode: paletteFitMode });
+    setGlslCode(FIT_MODES[paletteFitMode].buildGLSL(result, { linearLight: useLinearLight }) + '\n\n' + buildColorGLSL(colors));
+    drawGraph(graphRef.current, colors, result, paletteFitMode, useLinearLight);
+    renderGradientPreview(shaderCanvasRef.current, result, paletteFitMode, useLinearLight);
+    setPaletteDrawData({ colors, result, mode: paletteFitMode, linearLight: useLinearLight });
   };
 
   const performPaletteFit = async () => {
@@ -243,12 +246,12 @@ const App = () => {
   React.useEffect(() => {
     if (imageSrc && appMode === 'palette' && extractedColorsRef.current.length >= 2)
       performPaletteRefit(extractedColorsRef.current);
-  }, [paletteFitMode, lockFrequency, degree, weightDominance]);
+  }, [paletteFitMode, lockFrequency, degree, weightDominance, linearLight]);
 
   React.useEffect(() => {
     if (!paletteDrawData) return;
     drawSwatches(paletteSwatchRef.current, paletteDrawData.colors);
-    drawPaletteGradient(paletteGradientRef.current, paletteDrawData.result, paletteDrawData.mode);
+    drawPaletteGradient(paletteGradientRef.current, paletteDrawData.result, paletteDrawData.mode, paletteDrawData.linearLight);
   }, [paletteDrawData]);
 
   React.useEffect(() => {
@@ -292,7 +295,7 @@ const App = () => {
             ))}
           </div>
           <span className="text-[11px] font-semibold tracking-widest text-[var(--text-muted)] uppercase select-none">
-            Gradient Fitter
+            GLSL Gradient Fitter
           </span>
         </div>
 
@@ -328,45 +331,52 @@ const App = () => {
               ))}
             </div>
 
-            <div className={rightTab === 'settings' ? '' : 'hidden'}>
-              <div className="bg-[var(--surface)] p-5">
-                <div className="space-y-5">
-                  {appMode === 'line' && (
-                    <LineModeSettings
-                      fitMode={fitMode} setFitMode={setFitMode}
-                      degree={degree} setDegree={setDegree}
+            <div className="relative">
+              <div className={rightTab === 'code' ? 'invisible pointer-events-none' : ''}>
+                <div className="bg-[var(--surface)] p-5">
+                  <div className="space-y-5">
+                    <ImageAdjustPanel
+                      contrast={contrast} setContrast={setContrast}
+                      minLevel={minLevel} setMinLevel={setMinLevel}
+                      maxLevel={maxLevel} setMaxLevel={setMaxLevel}
                     />
-                  )}
-                  <ImageAdjustPanel
-                    contrast={contrast} setContrast={setContrast}
-                    minLevel={minLevel} setMinLevel={setMinLevel}
-                    maxLevel={maxLevel} setMaxLevel={setMaxLevel}
-                  />
-                  {appMode === 'palette' && (
-                    <PaletteModeSettings
-                      paletteMethod={paletteMethod} setPaletteMethod={setPaletteMethod}
-                      paletteFitMode={paletteFitMode} setPaletteFitMode={setPaletteFitMode}
-                      colorCount={colorCount} setColorCount={setColorCount}
-                      lockFrequency={lockFrequency} setLockFrequency={setLockFrequency}
-                      weightDominance={weightDominance} setWeightDominance={setWeightDominance}
-                      degree={degree} setDegree={setDegree}
-                      apiModel={apiModel} setApiModel={setApiModel}
-                      apiModels={apiModels}
-                      apiSeedCount={apiSeedCount} setApiSeedCount={setApiSeedCount}
-                      extractedColors={extractedColors}
-                      paletteSwatchRef={paletteSwatchRef}
-                      paletteGradientRef={paletteGradientRef}
-                      imageSrc={imageSrc}
-                      onRegenerate={performPaletteFit}
-                      onShuffle={shuffleColors}
-                    />
-                  )}
+                    <div className="relative">
+                      {/* Palette settings always in flow — anchors height to prevent mode-switch jumps */}
+                      <div className={appMode !== 'palette' ? 'invisible pointer-events-none' : ''}>
+                        <PaletteModeSettings
+                          paletteMethod={paletteMethod} setPaletteMethod={setPaletteMethod}
+                          paletteFitMode={paletteFitMode} setPaletteFitMode={setPaletteFitMode}
+                          colorCount={colorCount} setColorCount={setColorCount}
+                          lockFrequency={lockFrequency} setLockFrequency={setLockFrequency}
+                          linearLight={linearLight} setLinearLight={setLinearLight}
+                          weightDominance={weightDominance} setWeightDominance={setWeightDominance}
+                          degree={degree} setDegree={setDegree}
+                          apiModel={apiModel} setApiModel={setApiModel}
+                          apiModels={apiModels}
+                          apiSeedCount={apiSeedCount} setApiSeedCount={setApiSeedCount}
+                          extractedColors={extractedColors}
+                          paletteSwatchRef={paletteSwatchRef}
+                          paletteGradientRef={paletteGradientRef}
+                          imageSrc={imageSrc}
+                          onRegenerate={performPaletteFit}
+                          onShuffle={shuffleColors}
+                        />
+                      </div>
+                      {/* Line settings absolutely overlaid — never contributes to height */}
+                      <div className={`absolute inset-0 ${appMode !== 'line' ? 'invisible pointer-events-none' : ''}`}>
+                        <LineModeSettings
+                          fitMode={fitMode} setFitMode={setFitMode}
+                          degree={degree} setDegree={setDegree}
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className={rightTab === 'code' ? '' : 'hidden'}>
-              <CodePanel glslCode={glslCode} status={status} error={error} />
+              <div className={`absolute inset-0 ${rightTab !== 'code' ? 'invisible pointer-events-none' : ''}`}>
+                <CodePanel glslCode={glslCode} status={status} error={error} />
+              </div>
             </div>
           </div>
         </div>

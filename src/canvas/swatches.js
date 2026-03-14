@@ -12,13 +12,13 @@ export const drawSwatches = (canvas, colors) => {
   });
 };
 
-export const drawPaletteGradient = (canvas, coeffs, mode) => {
+export const drawPaletteGradient = (canvas, coeffs, mode, linearLight = false) => {
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
   const { width: w, height: h } = canvas;
   const imageData = ctx.createImageData(w, h);
   for (let x = 0; x < w; x++) {
-    const c = evalColor(coeffs, x / (w - 1), mode);
+    const c = evalColor(coeffs, x / (w - 1), mode, linearLight);
     const r = Math.max(0, Math.min(1, c.r)) * 255;
     const g = Math.max(0, Math.min(1, c.g)) * 255;
     const b = Math.max(0, Math.min(1, c.b)) * 255;

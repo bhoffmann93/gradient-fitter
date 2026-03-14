@@ -4,6 +4,7 @@ export const DEFAULTS = {
   colorCount: 5,
   lockFrequency: true,
   paletteFitMode: 'catmull',
+  linearLight: false,
   weightDominance: false,
   paletteMethod: 'dominant',
   apiModel: 'default',

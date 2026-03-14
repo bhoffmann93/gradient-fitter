@@ -1,6 +1,6 @@
 import React from 'react';
 import { RefreshCw, Shuffle } from 'lucide-react';
-import { FIT_MODES } from '../fit/index.js';
+import { FIT_MODES, LINEAR_LIGHT_MODES } from '../fit/index.js';
 
 const Toggle = ({ on, onToggle, labelOn, labelOff }) => (
   <button
@@ -33,6 +33,7 @@ const PaletteModeSettings = ({
   paletteFitMode, setPaletteFitMode,
   colorCount, setColorCount,
   lockFrequency, setLockFrequency,
+  linearLight, setLinearLight,
   weightDominance, setWeightDominance,
   degree, setDegree,
   apiModel, setApiModel,
@@ -150,6 +151,34 @@ const PaletteModeSettings = ({
         </>
       ) : FIT_MODE_DESCRIPTIONS[paletteFitMode]}
     </p>
+
+    {LINEAR_LIGHT_MODES.includes(paletteFitMode) && (
+      <div className="space-y-1.5">
+        <div className="flex items-center gap-3">
+          <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 uppercase tracking-wider">Interp. space</label>
+          <Toggle on={linearLight} onToggle={() => setLinearLight((v) => !v)} labelOn="Linear" labelOff="sRGB" />
+          <span className="text-[10px] text-[var(--text-muted)]">
+            {linearLight ? 'Linear light' : 'sRGB'}
+          </span>
+        </div>
+        <p className="text-[10px] text-[var(--text-muted)] leading-relaxed">
+          {linearLight
+            ? 'Interpolates in linear light — avoids the dark muddy midpoints you get in sRGB. The GLSL output converts back to sRGB at the end.'
+            : 'Interpolates directly in sRGB (gamma-encoded) space. Standard behavior — what most tools do by default.'}
+        </p>
+        <p className="text-[10px] text-[var(--text-muted)]">
+          More info:{' '}
+          <a
+            href="https://blog.johnnovak.net/2016/09/21/what-every-coder-should-know-about-gamma/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-[var(--text)] transition-colors"
+          >
+            What every coder should know about gamma
+          </a>
+        </p>
+      </div>
+    )}
 
     {paletteFitMode === 'poly' && (
       <div className="flex items-center gap-4">

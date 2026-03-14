@@ -20,9 +20,12 @@ const evaluate = ({ colors, tValues }, t) => {
   return colors[colors.length - 1];
 };
 
-const buildGLSL = ({ colors, tValues }) => {
+const buildGLSL = ({ colors, tValues }, { linearLight = false } = {}) => {
   const n = colors.length;
   const isUniform = tValues.every((tv, i) => Math.abs(tv - i / (n - 1)) < 0.001);
+  const ret = (expr) => linearLight
+    ? `pow(clamp(${expr}, 0.0, 1.0), vec3(0.4545))`
+    : expr;
 
   let code = `vec3 palette(float t) {\n`;
   if (isUniform) {
@@ -31,16 +34,18 @@ const buildGLSL = ({ colors, tValues }) => {
     code += `\n    );\n`;
     code += `    float f = clamp(t, 0.0, 1.0) * ${n - 1}.0;\n`;
     code += `    int i = clamp(int(f), 0, ${n - 2});\n`;
-    code += `    return mix(colors[i], colors[i + 1], fract(f));\n}`;
+    code += `    return ${ret('mix(colors[i], colors[i + 1], fract(f))')};\n}`;
   } else {
     code += `    vec4 stops[${n}] = vec4[](\n`;
     code += colors.map((c, i) => `        vec4(${fmtGlsl(c.r)}, ${fmtGlsl(c.g)}, ${fmtGlsl(c.b)}, ${fmtGlsl(tValues[i])})${i < n - 1 ? ',' : ''}`).join('\n');
     code += `\n    );\n`;
+    code += `    vec3 _r = stops[${n - 1}].rgb;\n`;
     for (let i = 0; i < n - 1; i++) {
-      code += `    if (t < stops[${i + 1}].w) return mix(stops[${i}].rgb, stops[${i + 1}].rgb,\n`;
+      const kw = i === 0 ? 'if' : 'else if';
+      code += `    ${kw} (t < stops[${i + 1}].w) _r = mix(stops[${i}].rgb, stops[${i + 1}].rgb,\n`;
       code += `        (t - stops[${i}].w) / (stops[${i + 1}].w - stops[${i}].w));\n`;
     }
-    code += `    return stops[${n - 1}].rgb;\n}`;
+    code += `    return ${ret('_r')};\n}`;
   }
   return code;
 };
