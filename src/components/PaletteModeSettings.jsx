@@ -21,11 +21,11 @@ const Toggle = ({ on, onToggle, labelOn, labelOff }) => (
 const FIT_MODE_ORDER = ['catmull', 'linear', 'steps', 'poly', 'cosine'];
 
 const FIT_MODE_DESCRIPTIONS = {
-  cosine: 'Fits a + b·cos(2π(ct+d)) per channel. Smooth, loops perfectly with locked freq. Best for organic gradients.',
-  poly: 'Least-squares polynomial through the colors. Can overshoot — use clamp. Higher degree = more flexibility, more risk of artifacts.',
-  linear: 'Direct mix() between color stops. Exact colors, no overshoot. Weight dominance stretches dominant colors across more t-range.',
-  steps: 'Hard cuts between colors. Each color occupies t-range proportional to its area. Good for quantized / posterized looks.',
-  catmull: 'Catmull-Rom spline through colors. Smooth like cosine but passes exactly through each color. Weight dominance adjusts stop spacing.',
+  cosine: null,
+  poly: 'Least-squares polynomial through the colors. Can overshoot — values may exceed 0–1 and need clamping in your shader. Higher degree = more flexibility, more risk of artifacts.',
+  linear: 'Interpolates directly between color stops. Exact colors, no overshoot. Dominance weighting stretches dominant colors across a wider portion of the gradient.',
+  steps: 'Hard cuts between colors. Each color occupies a portion of the gradient proportional to its pixel area. Good for quantized or posterized looks.',
+  catmull: 'Catmull-Rom spline through colors. Smooth like cosine but passes exactly through each extracted color. Dominance weighting adjusts stop spacing.',
 };
 
 const PaletteModeSettings = ({
@@ -100,7 +100,7 @@ const PaletteModeSettings = ({
           </select>
         </div>
         <div className="flex items-center gap-4">
-          <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 uppercase tracking-wider">Img seeds</label>
+          <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 uppercase tracking-wider">From image</label>
           <input
             type="range" min="1" max="4" step="1"
             value={apiSeedCount}
@@ -108,7 +108,7 @@ const PaletteModeSettings = ({
             className="flex-1 h-1 bg-[var(--border)] rounded cursor-pointer accent-[var(--accent)]"
           />
           <span className="text-xs font-mono bg-[var(--accent-bg)] text-[var(--accent)] px-2 py-0.5 rounded-sm">
-            {apiSeedCount} / 5
+            {apiSeedCount} of 5
           </span>
         </div>
       </>
@@ -136,7 +136,19 @@ const PaletteModeSettings = ({
     </div>
 
     <p className="text-[10px] text-[var(--text-muted)] leading-relaxed">
-      {FIT_MODE_DESCRIPTIONS[paletteFitMode]}
+      {paletteFitMode === 'cosine' ? (
+        <>
+          Fits a + b·cos(2π(ct+d)) per channel. Smooth, loops perfectly with freq locked. Best for organic gradients.{' '}
+          <a
+            href="https://iquilezles.org/articles/palettes/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-[var(--text)] transition-colors"
+          >
+            iquilezles.org/articles/palettes
+          </a>
+        </>
+      ) : FIT_MODE_DESCRIPTIONS[paletteFitMode]}
     </p>
 
     {paletteFitMode === 'poly' && (
@@ -155,17 +167,22 @@ const PaletteModeSettings = ({
     )}
 
     {paletteMethod !== 'api' && (
-      <div className="flex items-center gap-4">
-        <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 uppercase tracking-wider">Colors</label>
-        <input
-          type="range" min="3" max="7" step="1"
-          value={colorCount}
-          onChange={(e) => setColorCount(parseInt(e.target.value))}
-          className="flex-1 h-1 bg-[var(--border)] rounded cursor-pointer accent-[var(--accent)]"
-        />
-        <span className="text-xs font-mono bg-[var(--accent-bg)] text-[var(--accent)] px-2 py-0.5 rounded-sm">
-          {colorCount}
-        </span>
+      <div className="space-y-1">
+        <div className="flex items-center gap-4">
+          <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 uppercase tracking-wider">Colors</label>
+          <input
+            type="range" min="3" max="7" step="1"
+            value={colorCount}
+            onChange={(e) => setColorCount(parseInt(e.target.value))}
+            className="flex-1 h-1 bg-[var(--border)] rounded cursor-pointer accent-[var(--accent)]"
+          />
+          <span className="text-xs font-mono bg-[var(--accent-bg)] text-[var(--accent)] px-2 py-0.5 rounded-sm">
+            {colorCount}
+          </span>
+        </div>
+        <p className="text-[10px] text-[var(--text-muted)]">
+          How many colors to extract from the image. More colors = more detail, but fit modes may struggle to connect them smoothly.
+        </p>
       </div>
     )}
 
@@ -182,7 +199,7 @@ const PaletteModeSettings = ({
     {(paletteFitMode === 'linear' || paletteFitMode === 'catmull') && paletteMethod !== 'api' && (
       <div className="space-y-1.5">
         <div className="flex items-center gap-3">
-          <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 uppercase tracking-wider">Weight dom.</label>
+          <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 uppercase tracking-wider">Dominance</label>
           <Toggle on={weightDominance} onToggle={() => setWeightDominance((v) => !v)} labelOn="Weighted" labelOff="Uniform" />
           <span className="text-[10px] text-[var(--text-muted)]">
             {weightDominance ? 'Weighted' : 'Uniform'}
@@ -190,15 +207,15 @@ const PaletteModeSettings = ({
         </div>
         <p className="text-[10px] text-[var(--text-muted)] leading-relaxed">
           {weightDominance
-            ? 'Color stops are spaced by pixel area — dominant colors occupy a wider t-range, so they appear more in the gradient.'
-            : 'Color stops are evenly spaced across t. Each color gets equal range regardless of how much of the image it covers.'}
+            ? 'Color stops are spaced by pixel area — dominant colors occupy a wider portion of the gradient.'
+            : 'Color stops are evenly spaced. Each color gets equal range regardless of how much of the image it covers.'}
         </p>
       </div>
     )}
 
     <div className={`space-y-1 ${extractedColors.length === 0 ? 'hidden' : ''}`}>
       <div className="flex items-center justify-between">
-        <h4 className="text-[9px] font-semibold text-[var(--text-muted)] uppercase tracking-widest">Extracted Points</h4>
+        <h4 className="text-[9px] font-semibold text-[var(--text-muted)] uppercase tracking-widest">Extracted Colors</h4>
         <button
           onClick={onShuffle}
           className="flex items-center gap-1 text-[9px] bg-[var(--text)] hover:bg-[var(--text-hover)] text-[var(--bg)] px-2 py-0.5 rounded-sm transition-colors tracking-wider uppercase font-semibold"

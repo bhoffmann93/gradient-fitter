@@ -328,8 +328,8 @@ const App = () => {
               ))}
             </div>
 
-            {rightTab === 'settings' && (
-              <div className="bg-[var(--surface)] p-5 min-h-[480px]">
+            <div className={rightTab === 'settings' ? '' : 'hidden'}>
+              <div className="bg-[var(--surface)] p-5">
                 <div className="space-y-5">
                   {appMode === 'line' && (
                     <LineModeSettings
@@ -363,11 +363,11 @@ const App = () => {
                   )}
                 </div>
               </div>
-            )}
+            </div>
 
-            {rightTab === 'code' && (
+            <div className={rightTab === 'code' ? '' : 'hidden'}>
               <CodePanel glslCode={glslCode} status={status} error={error} />
-            )}
+            </div>
           </div>
         </div>
       </div>
