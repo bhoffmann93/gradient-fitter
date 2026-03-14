@@ -300,7 +300,7 @@ const App = () => {
     ctx.putImageData(destImageData, 0, 0);
 
     const uiCtx = uiCanvasRef.current.getContext('2d');
-    uiCtx.putImageData(destImageData, 0, 0);
+    uiCtx.drawImage(canvasRef.current, 0, 0, uiCanvasRef.current.width, uiCanvasRef.current.height);
 
     if (appMode === 'line') {
       performFitting();
@@ -994,43 +994,47 @@ const App = () => {
   };
 
   const drawOverlay = () => {
-    if (!uiCanvasRef.current || !canvasRef.current) return;
-    const ctx = uiCanvasRef.current.getContext('2d');
-    const w = uiCanvasRef.current.width;
-    const h = uiCanvasRef.current.height;
+    const canvas = uiCanvasRef.current;
+    const source = canvasRef.current;
+    if (!canvas || !source) return;
 
-    ctx.clearRect(0, 0, w, h);
-    ctx.drawImage(canvasRef.current, 0, 0, w, h);
+    const dpr = window.devicePixelRatio || 1;
+    const lw = canvas.width / dpr;
+    const lh = canvas.height / dpr;
+    const ctx = canvas.getContext('2d');
 
+    ctx.save();
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, lw, lh);
+    ctx.drawImage(source, 0, 0, lw, lh);
     ctx.fillStyle = 'rgba(0,0,0,0.15)';
-    ctx.fillRect(0, 0, w, h);
+    ctx.fillRect(0, 0, lw, lh);
 
-    const x1 = p1.x * w,
-      y1 = p1.y * h;
-    const x2 = p2.x * w,
-      y2 = p2.y * h;
+    const x1 = p1.x * lw, y1 = p1.y * lh;
+    const x2 = p2.x * lw, y2 = p2.y * lh;
 
     ctx.beginPath();
     ctx.moveTo(x1, y1);
     ctx.lineTo(x2, y2);
     ctx.strokeStyle = 'white';
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 3;
     ctx.stroke();
     ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1.5;
     ctx.stroke();
 
     const node = (x, y, c) => {
       ctx.beginPath();
-      ctx.arc(x, y, 6, 0, Math.PI * 2);
+      ctx.arc(x, y, 5, 0, Math.PI * 2);
       ctx.fillStyle = c;
       ctx.fill();
       ctx.strokeStyle = 'white';
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 1.5;
       ctx.stroke();
     };
     node(x1, y1, '#22c55e');
     node(x2, y2, '#ef4444');
+    ctx.restore();
   };
 
   const handleImageUpload = (e) => {
@@ -1061,10 +1065,11 @@ const App = () => {
         w = Math.round(w);
         h = Math.round(h);
 
+        const dpr = window.devicePixelRatio || 1;
         canvasRef.current.width = w;
         canvasRef.current.height = h;
-        uiCanvasRef.current.width = w;
-        uiCanvasRef.current.height = h;
+        uiCanvasRef.current.width = w * dpr;
+        uiCanvasRef.current.height = h * dpr;
 
         const ctx = canvasRef.current.getContext('2d');
         ctx.drawImage(img, 0, 0, w, h);
@@ -1119,8 +1124,9 @@ const App = () => {
     if (appMode === 'palette') {
       // Redraw image without overlay
       if (canvasRef.current && uiCanvasRef.current) {
-        const ctx = uiCanvasRef.current.getContext('2d');
-        ctx.drawImage(canvasRef.current, 0, 0);
+        const ui = uiCanvasRef.current;
+        const ctx = ui.getContext('2d');
+        ctx.drawImage(canvasRef.current, 0, 0, ui.width, ui.height);
       }
       performPaletteFit();
     } else {
