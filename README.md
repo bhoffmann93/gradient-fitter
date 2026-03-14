@@ -1,4 +1,4 @@
-# GLSL Gradient Fitter
+# gradient-fitter
 
 A browser tool for extracting color gradients from images and fitting them into GLSL shader functions — ready to paste into your fragment shader.
 
@@ -12,16 +12,20 @@ Upload an image, draw a sample line or extract a palette, and the tool fits the 
 
 Two modes:
 
-**Line Sample** — drag a line across the image to sample colors along it. Fits either a polynomial (least-squares, configurable degree) or a cosine palette ([Inigo Quilez's formula](https://iquilezles.org/articles/palettes/)).
+**Line Sample** — drag a line across the image to sample colors along it. Fits either a polynomial (least-squares, configurable degree) or a cosine palette ([Inigo Quilez Cosine Palette](https://iquilezles.org/articles/palettes/)).
 
 **Palette Extract** — extracts dominant colors from the whole image, then fits them using one of five methods:
 
 - **Catmull-Rom** — smooth spline that passes exactly through each color
-- **Linear** — straight segments between stops; dominance weighting available
-- **Polynomial** — least-squares, can overshoot
-- **Cosine** — smooth, loops perfectly
+- **Linear** — straight segments between stops
 
-Both modes support **linear light interpolation** for Linear and Catmull modes — avoids the dark muddy midpoints you get when interpolating in sRGB space. The GLSL output includes the sRGB conversion. See: [What every coder should know about gamma](https://blog.johnnovak.net/2016/09/21/what-every-coder-should-know-about-gamma/).
+- **Polynomial** — least-squares fitting, can overshoot
+- **Cosine** — smooth, option to loop perfectly ([Inigo Quilez Cosine Palette](https://iquilezles.org/articles/palettes/)).
+
+Both modes support **interpolation in Linear RGB** for Linear and Catmull modes — avoids the dark muddy midpoints you get when interpolating in sRGB space. The GLSL output includes the sRGB conversion. 
+See: [What every coder should know about gamma](https://blog.johnnovak.net/2016/09/21/what-every-coder-should-know-about-gamma/).
+
+Dominance weighting available for catmull-rom and linear which places the stops in relation to the dominance of colors extracted.
 
 ---
 
@@ -38,7 +42,6 @@ This project was built as a **vibe coding experiment** to test [Claude Code](htt
 - [lucide-react](https://lucide.dev/) — icons
 - [extract-colors](https://github.com/Namide/extract-colors) — dominant color extraction
 - [Colormind API](http://colormind.io/) — AI palette generation (API mode)
-- All fitting math (polynomial solver, Catmull-Rom, cosine fitting, k-means, Gaussian elimination) implemented from scratch in vanilla JS
 
 ---
 
