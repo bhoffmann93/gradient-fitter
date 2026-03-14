@@ -315,34 +315,49 @@ const App = () => {
           </div>
 
           <div className="min-w-0 border border-[var(--border)] rounded-sm overflow-hidden">
-            <div className="flex bg-[var(--surface-muted)] border-b border-[var(--border)]">
-              {[['settings', 'Settings'], ['code', 'Code']].map(([id, label]) => (
-                <button
-                  key={id}
-                  onClick={() => setRightTab(id)}
-                  className={`px-5 py-3 text-[10px] font-semibold tracking-widest uppercase transition-all border-r border-[var(--border)] last:border-r-0 ${
-                    rightTab === id
-                      ? 'bg-[var(--surface)] text-[var(--accent)]'
-                      : 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface)]'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            <div className="relative">
-              <div className={rightTab === 'code' ? 'invisible pointer-events-none' : ''}>
-                <div className="bg-[var(--surface)] p-5">
-                  <div className="space-y-5">
-                    <ImageAdjustPanel
-                      contrast={contrast} setContrast={setContrast}
-                      minLevel={minLevel} setMinLevel={setMinLevel}
-                      maxLevel={maxLevel} setMaxLevel={setMaxLevel}
-                    />
-                    <div className="relative">
-                      {/* Palette settings always in flow — anchors height to prevent mode-switch jumps */}
-                      <div className={appMode !== 'palette' ? 'invisible pointer-events-none' : ''}>
+            {appMode === 'line' ? (
+              <>
+                <div className="bg-[var(--surface)] p-5 space-y-5">
+                  <ImageAdjustPanel
+                    contrast={contrast} setContrast={setContrast}
+                    minLevel={minLevel} setMinLevel={setMinLevel}
+                    maxLevel={maxLevel} setMaxLevel={setMaxLevel}
+                  />
+                  <LineModeSettings
+                    fitMode={fitMode} setFitMode={setFitMode}
+                    degree={degree} setDegree={setDegree}
+                  />
+                </div>
+                <div className="border-t border-[var(--border)]">
+                  <CodePanel glslCode={glslCode} status={status} error={error} />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex bg-[var(--surface-muted)] border-b border-[var(--border)]">
+                  {[['settings', 'Settings'], ['code', 'Code']].map(([id, label]) => (
+                    <button
+                      key={id}
+                      onClick={() => setRightTab(id)}
+                      className={`px-5 py-3 text-[10px] font-semibold tracking-widest uppercase transition-all border-r border-[var(--border)] last:border-r-0 ${
+                        rightTab === id
+                          ? 'bg-[var(--surface)] text-[var(--accent)]'
+                          : 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface)]'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <div className="relative">
+                  <div className={rightTab === 'code' ? 'invisible pointer-events-none' : ''}>
+                    <div className="bg-[var(--surface)] p-5">
+                      <div className="space-y-5">
+                        <ImageAdjustPanel
+                          contrast={contrast} setContrast={setContrast}
+                          minLevel={minLevel} setMinLevel={setMinLevel}
+                          maxLevel={maxLevel} setMaxLevel={setMaxLevel}
+                        />
                         <PaletteModeSettings
                           paletteMethod={paletteMethod} setPaletteMethod={setPaletteMethod}
                           paletteFitMode={paletteFitMode} setPaletteFitMode={setPaletteFitMode}
@@ -362,22 +377,14 @@ const App = () => {
                           onShuffle={shuffleColors}
                         />
                       </div>
-                      {/* Line settings absolutely overlaid — never contributes to height */}
-                      <div className={`absolute inset-0 ${appMode !== 'line' ? 'invisible pointer-events-none' : ''}`}>
-                        <LineModeSettings
-                          fitMode={fitMode} setFitMode={setFitMode}
-                          degree={degree} setDegree={setDegree}
-                        />
-                      </div>
                     </div>
                   </div>
+                  <div className={`absolute inset-0 ${rightTab !== 'code' ? 'invisible pointer-events-none' : ''}`}>
+                    <CodePanel glslCode={glslCode} status={status} error={error} />
+                  </div>
                 </div>
-              </div>
-
-              <div className={`absolute inset-0 ${rightTab !== 'code' ? 'invisible pointer-events-none' : ''}`}>
-                <CodePanel glslCode={glslCode} status={status} error={error} />
-              </div>
-            </div>
+              </>
+            )}
           </div>
         </div>
       </div>
