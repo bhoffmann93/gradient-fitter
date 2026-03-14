@@ -1473,7 +1473,7 @@ const App = () => {
                 <Activity className="w-4 h-4 text-slate-400" /> RGB Channels
               </h2>
               <div className="w-full h-48 bg-slate-50 rounded border border-slate-100 overflow-hidden mb-4">
-                <canvas ref={graphRef} width={500} height={300} className="w-full h-full" />
+                <canvas ref={graphRef} width={500} height={192} className="w-full h-full" />
               </div>
               <div className="space-y-2">
                 <h3 className="text-xs font-semibold text-slate-500 flex items-center gap-2">
