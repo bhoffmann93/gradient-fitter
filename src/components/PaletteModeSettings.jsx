@@ -18,14 +18,13 @@ const Toggle = ({ on, onToggle, labelOn, labelOff }) => (
   </button>
 );
 
-const FIT_MODE_ORDER = ['catmull', 'linear', 'steps', 'poly', 'cosine'];
+const FIT_MODE_ORDER = ['catmull', 'linear', 'poly', 'cosine'];
 
 const FIT_MODE_DESCRIPTIONS = {
   cosine: null,
   poly: 'Least-squares polynomial through the colors. Can overshoot — values may exceed 0–1 and need clamping in your shader. Higher degree = more flexibility, more risk of artifacts.',
   linear: 'Interpolates directly between color stops. Exact colors, no overshoot. Dominance weighting stretches dominant colors across a wider portion of the gradient.',
-  steps: 'Hard cuts between colors. Each color occupies a portion of the gradient proportional to its pixel area. Good for quantized or posterized looks.',
-  catmull: 'Catmull-Rom spline through colors. Smooth like cosine but passes exactly through each extracted color. Dominance weighting adjusts stop spacing.',
+catmull: 'Catmull-Rom spline through colors. Smooth like cosine but passes exactly through each extracted color. Dominance weighting adjusts stop spacing.',
 };
 
 const PaletteModeSettings = ({

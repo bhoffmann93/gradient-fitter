@@ -3,7 +3,7 @@ import catmull from './catmull.js';
 import poly from './poly.js';
 import cosine from './cosine.js';
 
-export const FIT_MODES = { steps, linear, catmull, poly, cosine };
+export const FIT_MODES = { linear, catmull, poly, cosine };
 
 export const linearize = (c) => ({
   r: Math.pow(Math.max(0, c.r), 2.2),

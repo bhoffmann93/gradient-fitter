@@ -21,8 +21,19 @@ const LineModeSettings = ({ fitMode, setFitMode, degree, setDegree }) => (
     <p className="text-[10px] text-[var(--text-muted)] leading-relaxed">
       {fitMode === 'poly' &&
         'Least-squares polynomial fit per RGB channel. Higher degree = more flexibility but may overshoot outside 0–1. Use degree 3–4 for most gradients.'}
-      {fitMode === 'cosine' &&
-        'Fits a + b·cos(2π(ct+d)) per channel. Naturally smooth and periodic — ideal for gradients that loop or have rhythmic colour shifts.'}
+      {fitMode === 'cosine' && (
+        <>
+          Fits a + b·cos(2π(ct+d)) per channel. Smooth, loops perfectly with freq locked. Best for organic gradients.{' '}
+          <a
+            href="https://iquilezles.org/articles/palettes/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-[var(--text)] transition-colors"
+          >
+            iquilezles.org/articles/palettes
+          </a>
+        </>
+      )}
     </p>
 
     {fitMode === 'poly' && (
