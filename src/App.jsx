@@ -889,7 +889,7 @@ const App = () => {
 
     ctx.clearRect(0, 0, W, H);
 
-    ctx.strokeStyle = '#f1f5f9';
+    ctx.strokeStyle = '#D4D3D0';
     ctx.lineWidth = 1;
     ctx.beginPath();
     for (let i = 0; i <= 4; i++) {
@@ -975,7 +975,7 @@ const App = () => {
     ctx.strokeStyle = 'white';
     ctx.lineWidth = 4;
     ctx.stroke();
-    ctx.strokeStyle = '#3b82f6';
+    ctx.strokeStyle = '#C07830';
     ctx.lineWidth = 2;
     ctx.stroke();
 
@@ -1088,104 +1088,105 @@ const App = () => {
   }, [appMode]);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans p-4 md:p-8">
+    <div className="min-h-screen bg-[#E9E8E5] text-[#1C1C1A] p-4 md:p-8">
       <div className="max-w-5xl mx-auto">
         <header className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
-            <Code className="w-8 h-8 text-indigo-600" />
-            Gradient-to-Shader Fitter
-          </h1>
-          <p className="text-slate-500 mt-1 text-sm">Convert images to GLSL gradient functions.</p>
+          <div className="flex items-baseline gap-4">
+            <h1 className="text-2xl font-bold text-[#1C1C1A] tracking-tight">
+              Gradient Fitter
+            </h1>
+            <span className="text-[10px] text-[#8A8A88] font-semibold tracking-widest uppercase">
+              GLSL Generator
+            </span>
+          </div>
+          <p className="text-[#6A6A68] mt-1 text-xs tracking-wide">Convert images to GLSL gradient functions.</p>
 
           {/* Top-level mode selector */}
-          <div className="flex bg-slate-200 p-1 rounded-xl mt-4 w-fit gap-1">
+          <div className="flex border-b border-[#D4D3D0] mt-5 gap-0">
             <button
               onClick={() => setAppMode('line')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                appMode === 'line' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+              className={`flex items-center gap-2 px-4 py-2.5 text-[11px] font-semibold tracking-widest uppercase transition-all border-b-2 -mb-px ${
+                appMode === 'line'
+                  ? 'border-[#C07830] text-[#C07830]'
+                  : 'border-transparent text-[#8A8A88] hover:text-[#1C1C1A]'
               }`}
             >
-              <MousePointer2 className="w-4 h-4" /> Line Sample
+              Line Sample
             </button>
             <button
               onClick={() => setAppMode('palette')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                appMode === 'palette' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+              className={`flex items-center gap-2 px-4 py-2.5 text-[11px] font-semibold tracking-widest uppercase transition-all border-b-2 -mb-px ${
+                appMode === 'palette'
+                  ? 'border-[#C07830] text-[#C07830]'
+                  : 'border-transparent text-[#8A8A88] hover:text-[#1C1C1A]'
               }`}
             >
-              <Palette className="w-4 h-4" /> Palette Extract
+              Palette Extract
             </button>
           </div>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="space-y-6 min-w-0">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="space-y-4 min-w-0">
             {/* IMAGE */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+            <div className="bg-[#F2F1EE] p-5 border border-[#D4D3D0] rounded-sm">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="font-semibold text-slate-800 flex items-center gap-2">
-                  {appMode === 'line' ? (
-                    <>
-                      <MousePointer2 className="w-4 h-4 text-slate-400" />
-                      {imageSrc ? 'Sample Line' : 'Input'}
-                    </>
-                  ) : (
-                    <>
-                      <Palette className="w-4 h-4 text-slate-400" />
-                      Palette Source
-                    </>
-                  )}
+                <h2 className="font-semibold text-[#1C1C1A] text-[10px] uppercase tracking-widest">
+                  {appMode === 'line' ? (imageSrc ? 'Sample Line' : 'Input') : 'Palette Source'}
                 </h2>
-                <label className="text-xs bg-indigo-600 text-white px-3 py-1 rounded cursor-pointer hover:bg-indigo-700">
+                <label className="text-[10px] font-semibold bg-[#1C1C1A] text-[#E9E8E5] px-3 py-1.5 rounded-sm cursor-pointer hover:bg-[#3A3A38] tracking-widest uppercase transition-colors">
                   {imageSrc ? 'Change' : 'Upload'}
                   <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
                 </label>
               </div>
 
-              <div className="relative flex justify-center items-center bg-slate-50 rounded-lg border-2 border-dashed border-slate-200 overflow-hidden min-h-[200px] select-none">
+              <div className="relative flex justify-center items-center bg-[#E9E8E5] border-2 border-dashed border-[#C4C3C0] overflow-hidden min-h-[200px] select-none">
                 {!imageSrc && (
-                  <div className="text-slate-400 flex flex-col items-center gap-2 pointer-events-none">
-                    <Upload className="w-10 h-10 opacity-30" />
-                    <span className="text-sm font-medium">Upload an image</span>
-                    <span className="text-xs opacity-60">PNG · JPG · WebP</span>
+                  <div className="text-[#8A8A88] flex flex-col items-center gap-2 pointer-events-none">
+                    <Upload className="w-10 h-10 opacity-25" />
+                    <span className="text-xs font-semibold tracking-widest uppercase">Upload an image</span>
+                    <span className="text-[10px] opacity-60 tracking-wider">PNG · JPG · WebP</span>
                   </div>
                 )}
                 <canvas ref={canvasRef} className="hidden" />
                 <canvas
                   ref={uiCanvasRef}
-                  className={`max-w-full touch-none shadow-lg ${!imageSrc ? 'hidden' : 'block'} ${appMode === 'line' ? 'cursor-crosshair' : 'cursor-default'}`}
+                  className={`max-w-full touch-none ${!imageSrc ? 'hidden' : 'block'} ${appMode === 'line' ? 'cursor-crosshair' : 'cursor-default'}`}
                   onMouseDown={handleMouseDown}
                   onMouseMove={handleMouseMove}
                   onMouseUp={handleMouseUp}
                   onMouseLeave={handleMouseUp}
                 />
               </div>
-
             </div>
 
             {/* Settings */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+            <div className="bg-[#F2F1EE] p-5 border border-[#D4D3D0] rounded-sm">
               <div className="space-y-5">
                 {/* Fit mode toggle — line mode only */}
                 {appMode === 'line' && (
                   <div className="space-y-3">
-                    <div className="flex bg-slate-100 p-1 rounded-lg">
+                    <div className="flex bg-[#E0DFDC] p-0.5 rounded-sm">
                       <button
                         onClick={() => setFitMode('poly')}
-                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${fitMode === 'poly' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`flex-1 py-1.5 text-[10px] rounded-sm font-semibold tracking-widest uppercase transition-all ${
+                          fitMode === 'poly' ? 'bg-[#F2F1EE] text-[#C07830]' : 'text-[#8A8A88] hover:text-[#1C1C1A]'
+                        }`}
                       >
                         Polynomial
                       </button>
                       <button
                         onClick={() => setFitMode('cosine')}
-                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${fitMode === 'cosine' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`flex-1 py-1.5 text-[10px] rounded-sm font-semibold tracking-widest uppercase transition-all ${
+                          fitMode === 'cosine' ? 'bg-[#F2F1EE] text-[#C07830]' : 'text-[#8A8A88] hover:text-[#1C1C1A]'
+                        }`}
                       >
                         Cosine
                       </button>
                     </div>
                     {fitMode === 'poly' && (
                       <div className="flex items-center gap-4">
-                        <label className="text-xs font-medium text-slate-600 w-16">Degree</label>
+                        <label className="text-[10px] font-semibold text-[#6A6A68] w-16 uppercase tracking-wider">Degree</label>
                         <input
                           type="range"
                           min="1"
@@ -1193,9 +1194,9 @@ const App = () => {
                           step="1"
                           value={degree}
                           onChange={(e) => setDegree(parseInt(e.target.value))}
-                          className="flex-1 accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+                          className="flex-1 h-1 bg-[#D4D3D0] rounded cursor-pointer accent-[#C07830]"
                         />
-                        <span className="text-xs font-mono bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded">
+                        <span className="text-xs font-mono bg-[#EEE6DC] text-[#C07830] px-2 py-0.5 rounded-sm">
                           {degree}
                         </span>
                       </div>
@@ -1204,12 +1205,12 @@ const App = () => {
                 )}
 
                 {/* Image Processing */}
-                <div className="space-y-3 p-4 bg-slate-50 rounded-lg border border-slate-100">
-                  <h3 className="text-xs font-semibold text-slate-500 flex items-center gap-2">
+                <div className="space-y-3 p-4 bg-[#E9E8E5] rounded-sm border border-[#D4D3D0]">
+                  <h3 className="text-[10px] font-semibold text-[#8A8A88] flex items-center gap-2 uppercase tracking-widest">
                     <Sliders className="w-3 h-3" /> Image Processing
                   </h3>
                   <div className="flex items-center gap-4">
-                    <label className="text-xs font-medium text-slate-600 w-16">Contrast</label>
+                    <label className="text-[10px] font-semibold text-[#6A6A68] w-16 uppercase tracking-wider">Contrast</label>
                     <input
                       type="range"
                       min="0"
@@ -1217,12 +1218,12 @@ const App = () => {
                       step="0.1"
                       value={contrast}
                       onChange={(e) => setContrast(parseFloat(e.target.value))}
-                      className="flex-1 accent-indigo-500 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                      className="flex-1 h-1 bg-[#D4D3D0] rounded appearance-none cursor-pointer accent-[#C07830]"
                     />
-                    <span className="text-xs w-8 text-right">{contrast.toFixed(1)}</span>
+                    <span className="text-xs w-8 text-right font-mono text-[#6A6A68]">{contrast.toFixed(1)}</span>
                   </div>
                   <div className="flex items-center gap-4">
-                    <label className="text-xs font-medium text-slate-600 w-16">Levels</label>
+                    <label className="text-[10px] font-semibold text-[#6A6A68] w-16 uppercase tracking-wider">Levels</label>
                     <div className="flex-1 flex gap-2">
                       <input
                         type="range"
@@ -1231,7 +1232,7 @@ const App = () => {
                         step="1"
                         value={minLevel}
                         onChange={(e) => setMinLevel(Math.min(parseInt(e.target.value), maxLevel - 5))}
-                        className="flex-1 accent-slate-800 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                        className="flex-1 h-1 bg-[#D4D3D0] rounded appearance-none cursor-pointer accent-[#C07830]"
                       />
                       <input
                         type="range"
@@ -1240,12 +1241,12 @@ const App = () => {
                         step="1"
                         value={maxLevel}
                         onChange={(e) => setMaxLevel(Math.max(parseInt(e.target.value), minLevel + 5))}
-                        className="flex-1 accent-slate-400 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                        className="flex-1 h-1 bg-[#D4D3D0] rounded appearance-none cursor-pointer accent-[#C07830]"
                       />
                     </div>
-                    <div className="flex flex-col text-[10px] w-8 text-right leading-3">
+                    <div className="flex flex-col text-[10px] w-8 text-right leading-3 font-mono text-[#6A6A68]">
                       <span>{maxLevel}</span>
-                      <span className="text-slate-400">{minLevel}</span>
+                      <span className="text-[#8A8A88]">{minLevel}</span>
                     </div>
                   </div>
                 </div>
@@ -1253,36 +1254,42 @@ const App = () => {
                 {/* Palette controls */}
                 {appMode === 'palette' && (
                   <div className="space-y-3">
-                    <h3 className="text-xs font-semibold text-slate-500 flex items-center gap-2">
-                      <Palette className="w-3 h-3" /> Palette Settings
+                    <h3 className="text-[10px] font-semibold text-[#8A8A88] uppercase tracking-widest">
+                      Palette Settings
                     </h3>
                     {/* Extraction group */}
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Extraction</span>
-                      <div className="flex-1 border-t border-slate-100" />
+                      <span className="text-[9px] font-semibold text-[#8A8A88] uppercase tracking-widest">Extraction</span>
+                      <div className="flex-1 border-t border-[#D4D3D0]" />
                     </div>
-                    <div className="flex bg-slate-100 p-1 rounded-lg">
+                    <div className="flex bg-[#E0DFDC] p-0.5 rounded-sm">
                       <button
                         onClick={() => setPaletteMethod('dominant')}
-                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${paletteMethod === 'dominant' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`flex-1 py-1.5 text-[10px] rounded-sm font-semibold tracking-widest uppercase transition-all ${
+                          paletteMethod === 'dominant' ? 'bg-[#F2F1EE] text-[#C07830]' : 'text-[#8A8A88] hover:text-[#1C1C1A]'
+                        }`}
                       >
                         Dominant
                       </button>
                       <button
                         onClick={() => setPaletteMethod('generative')}
-                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${paletteMethod === 'generative' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`flex-1 py-1.5 text-[10px] rounded-sm font-semibold tracking-widest uppercase transition-all ${
+                          paletteMethod === 'generative' ? 'bg-[#F2F1EE] text-[#C07830]' : 'text-[#8A8A88] hover:text-[#1C1C1A]'
+                        }`}
                       >
                         Generative
                       </button>
                       <button
                         onClick={() => setPaletteMethod('api')}
-                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${paletteMethod === 'api' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`flex-1 py-1.5 text-[10px] rounded-sm font-semibold tracking-widest uppercase transition-all ${
+                          paletteMethod === 'api' ? 'bg-[#F2F1EE] text-[#C07830]' : 'text-[#8A8A88] hover:text-[#1C1C1A]'
+                        }`}
                       >
                         API
                       </button>
                     </div>
                     <div className="flex items-center justify-between">
-                      <p className="text-[10px] text-slate-400 leading-relaxed">
+                      <p className="text-[10px] text-[#8A8A88] leading-relaxed">
                         {paletteMethod === 'dominant' &&
                           'Ranks colors by pixel coverage — most frequent colors first. Deterministic.'}
                         {paletteMethod === 'generative' &&
@@ -1293,7 +1300,7 @@ const App = () => {
                       {(paletteMethod === 'generative' || paletteMethod === 'api') && imageSrc && (
                         <button
                           onClick={performPaletteFit}
-                          className="flex items-center gap-1 text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1 rounded ml-3 shrink-0"
+                          className="flex items-center gap-1 text-[10px] bg-[#C07830] hover:bg-[#A86028] text-white px-2.5 py-1 rounded-sm ml-3 shrink-0 tracking-widest uppercase font-semibold transition-colors"
                         >
                           <RefreshCw className="w-3 h-3" /> Regenerate
                         </button>
@@ -1302,11 +1309,11 @@ const App = () => {
                     {paletteMethod === 'api' && (
                       <>
                         <div className="flex items-center gap-3">
-                          <label className="text-xs font-medium text-slate-600 w-20 shrink-0">Model</label>
+                          <label className="text-[10px] font-semibold text-[#6A6A68] w-20 shrink-0 uppercase tracking-wider">Model</label>
                           <select
                             value={apiModel}
                             onChange={(e) => setApiModel(e.target.value)}
-                            className="flex-1 text-xs bg-slate-50 border border-slate-200 rounded px-2 py-1 text-slate-700 cursor-pointer"
+                            className="flex-1 text-xs bg-[#E9E8E5] border border-[#D4D3D0] rounded-sm px-2 py-1 text-[#1C1C1A] cursor-pointer focus:outline-none focus:border-[#C07830]"
                           >
                             {apiModels.map((m) => (
                               <option key={m} value={m}>{m}</option>
@@ -1314,54 +1321,64 @@ const App = () => {
                           </select>
                         </div>
                         <div className="flex items-center gap-4">
-                          <label className="text-xs font-medium text-slate-600 w-20">Img seeds</label>
+                          <label className="text-[10px] font-semibold text-[#6A6A68] w-20 uppercase tracking-wider">Img seeds</label>
                           <input
                             type="range" min="1" max="4" step="1" value={apiSeedCount}
                             onChange={(e) => setApiSeedCount(parseInt(e.target.value))}
-                            className="flex-1 accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+                            className="flex-1 h-1 bg-[#D4D3D0] rounded cursor-pointer accent-[#C07830]"
                           />
-                          <span className="text-xs font-mono bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded">{apiSeedCount} / 5</span>
+                          <span className="text-xs font-mono bg-[#EEE6DC] text-[#C07830] px-2 py-0.5 rounded-sm">{apiSeedCount} / 5</span>
                         </div>
                       </>
                     )}
                     {/* Fit group */}
                     <div className="flex items-center gap-2 pt-1">
-                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Fit Function</span>
-                      <div className="flex-1 border-t border-slate-100" />
+                      <span className="text-[9px] font-semibold text-[#8A8A88] uppercase tracking-widest">Fit Function</span>
+                      <div className="flex-1 border-t border-[#D4D3D0]" />
                     </div>
-                    <div className="flex bg-slate-100 p-1 rounded-lg">
+                    <div className="flex bg-[#E0DFDC] p-0.5 rounded-sm">
                       <button
                         onClick={() => setPaletteFitMode('cosine')}
-                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${paletteFitMode === 'cosine' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`flex-1 py-1.5 text-[9px] rounded-sm font-semibold tracking-widest uppercase transition-all ${
+                          paletteFitMode === 'cosine' ? 'bg-[#F2F1EE] text-[#C07830]' : 'text-[#8A8A88] hover:text-[#1C1C1A]'
+                        }`}
                       >
                         Cosine
                       </button>
                       <button
                         onClick={() => setPaletteFitMode('poly')}
-                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${paletteFitMode === 'poly' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`flex-1 py-1.5 text-[9px] rounded-sm font-semibold tracking-widest uppercase transition-all ${
+                          paletteFitMode === 'poly' ? 'bg-[#F2F1EE] text-[#C07830]' : 'text-[#8A8A88] hover:text-[#1C1C1A]'
+                        }`}
                       >
                         Poly
                       </button>
                       <button
                         onClick={() => setPaletteFitMode('linear')}
-                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${paletteFitMode === 'linear' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`flex-1 py-1.5 text-[9px] rounded-sm font-semibold tracking-widest uppercase transition-all ${
+                          paletteFitMode === 'linear' ? 'bg-[#F2F1EE] text-[#C07830]' : 'text-[#8A8A88] hover:text-[#1C1C1A]'
+                        }`}
                       >
                         Linear
                       </button>
                       <button
                         onClick={() => setPaletteFitMode('steps')}
-                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${paletteFitMode === 'steps' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`flex-1 py-1.5 text-[9px] rounded-sm font-semibold tracking-widest uppercase transition-all ${
+                          paletteFitMode === 'steps' ? 'bg-[#F2F1EE] text-[#C07830]' : 'text-[#8A8A88] hover:text-[#1C1C1A]'
+                        }`}
                       >
                         Steps
                       </button>
                       <button
                         onClick={() => setPaletteFitMode('catmull')}
-                        className={`flex-1 py-1.5 text-xs rounded-md font-medium transition-all ${paletteFitMode === 'catmull' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`flex-1 py-1.5 text-[9px] rounded-sm font-semibold tracking-widest uppercase transition-all ${
+                          paletteFitMode === 'catmull' ? 'bg-[#F2F1EE] text-[#C07830]' : 'text-[#8A8A88] hover:text-[#1C1C1A]'
+                        }`}
                       >
                         Catmull
                       </button>
                     </div>
-                    <p className="text-[10px] text-slate-400 leading-relaxed">
+                    <p className="text-[10px] text-[#8A8A88] leading-relaxed">
                       {paletteFitMode === 'cosine' &&
                         'Fits a + b·cos(2π(ct+d)) per channel. Smooth, loops perfectly with locked freq. Best for organic gradients.'}
                       {paletteFitMode === 'poly' &&
@@ -1375,7 +1392,7 @@ const App = () => {
                     </p>
                     {paletteFitMode === 'poly' && (
                       <div className="flex items-center gap-4">
-                        <label className="text-xs font-medium text-slate-600 w-16">Degree</label>
+                        <label className="text-[10px] font-semibold text-[#6A6A68] w-16 uppercase tracking-wider">Degree</label>
                         <input
                           type="range"
                           min="1"
@@ -1383,16 +1400,16 @@ const App = () => {
                           step="1"
                           value={degree}
                           onChange={(e) => setDegree(parseInt(e.target.value))}
-                          className="flex-1 accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+                          className="flex-1 h-1 bg-[#D4D3D0] rounded cursor-pointer accent-[#C07830]"
                         />
-                        <span className="text-xs font-mono bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded">
+                        <span className="text-xs font-mono bg-[#EEE6DC] text-[#C07830] px-2 py-0.5 rounded-sm">
                           {degree}
                         </span>
                       </div>
                     )}
                     {paletteMethod !== 'api' && (
                       <div className="flex items-center gap-4">
-                        <label className="text-xs font-medium text-slate-600 w-20">Colors</label>
+                        <label className="text-[10px] font-semibold text-[#6A6A68] w-20 uppercase tracking-wider">Colors</label>
                         <input
                           type="range"
                           min="3"
@@ -1400,64 +1417,72 @@ const App = () => {
                           step="1"
                           value={colorCount}
                           onChange={(e) => setColorCount(parseInt(e.target.value))}
-                          className="flex-1 accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+                          className="flex-1 h-1 bg-[#D4D3D0] rounded cursor-pointer accent-[#C07830]"
                         />
-                        <span className="text-xs font-mono bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded">
+                        <span className="text-xs font-mono bg-[#EEE6DC] text-[#C07830] px-2 py-0.5 rounded-sm">
                           {colorCount}
                         </span>
                       </div>
                     )}
                     {paletteFitMode === 'cosine' && (
                       <div className="flex items-center gap-3">
-                        <label className="text-xs font-medium text-slate-600 w-20">Lock freq</label>
+                        <label className="text-[10px] font-semibold text-[#6A6A68] w-20 uppercase tracking-wider">Lock freq</label>
                         <button
                           onClick={() => setLockFrequency((v) => !v)}
-                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${lockFrequency ? 'bg-indigo-500' : 'bg-slate-300'}`}
+                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                            lockFrequency ? 'bg-[#C07830]' : 'bg-[#C4C3C0]'
+                          }`}
                         >
                           <span
-                            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${lockFrequency ? 'translate-x-4' : 'translate-x-1'}`}
+                            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+                              lockFrequency ? 'translate-x-4' : 'translate-x-1'
+                            }`}
                           />
                         </button>
-                        <span className="text-xs text-slate-400">
+                        <span className="text-[10px] text-[#8A8A88]">
                           {lockFrequency ? 'Integer c (perfect loop)' : 'Free float c'}
                         </span>
                       </div>
                     )}
                     {(paletteFitMode === 'linear' || paletteFitMode === 'catmull') && paletteMethod !== 'api' && (
                       <div className="flex items-center gap-3">
-                        <label className="text-xs font-medium text-slate-600 w-20">Weight dominance</label>
+                        <label className="text-[10px] font-semibold text-[#6A6A68] w-20 uppercase tracking-wider">Weight dom.</label>
                         <button
                           onClick={() => setWeightDominance((v) => !v)}
-                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${weightDominance ? 'bg-indigo-500' : 'bg-slate-300'}`}
+                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                            weightDominance ? 'bg-[#C07830]' : 'bg-[#C4C3C0]'
+                          }`}
                         >
                           <span
-                            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${weightDominance ? 'translate-x-4' : 'translate-x-1'}`}
+                            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+                              weightDominance ? 'translate-x-4' : 'translate-x-1'
+                            }`}
                           />
                         </button>
-                        <span className="text-xs text-slate-400">{weightDominance ? 't ∝ area' : 'Uniform t'}</span>
+                        <span className="text-[10px] text-[#8A8A88]">{weightDominance ? 't ∝ area' : 'Uniform t'}</span>
                       </div>
                     )}
 
                     {/* Extracted color swatches — always mounted so refs are valid */}
                     <div className={`space-y-1 ${extractedColors.length === 0 ? 'hidden' : ''}`}>
                       <div className="flex items-center justify-between">
-                        <h4 className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">
+                        <h4 className="text-[9px] font-semibold text-[#8A8A88] uppercase tracking-widest">
                           Extracted Points
                         </h4>
                         <button
                           onClick={shuffleColors}
-                          className="flex items-center gap-1 text-[10px] bg-blue-500 hover:bg-blue-600 text-white px-2 py-0.5 rounded transition-colors"
+                          className="flex items-center gap-1 text-[9px] bg-[#1C1C1A] hover:bg-[#3A3A38] text-[#E9E8E5] px-2 py-0.5 rounded-sm transition-colors tracking-wider uppercase font-semibold"
                         >
                           <Shuffle className="w-3 h-3" /> Shuffle
                         </button>
                       </div>
-                      <div className="rounded-md overflow-hidden border border-slate-200 h-12">
+                      <div className="overflow-hidden border border-[#D4D3D0] h-12">
                         <canvas ref={paletteSwatchRef} width={500} height={48} className="w-full h-full" />
                       </div>
-                      <h4 className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide pt-1">
+                      <h4 className="text-[9px] font-semibold text-[#8A8A88] uppercase tracking-widest pt-1">
                         Fitted Gradient
                       </h4>
-                      <div className="rounded-md overflow-hidden border border-slate-200 h-12">
+                      <div className="overflow-hidden border border-[#D4D3D0] h-12">
                         <canvas ref={paletteGradientRef} width={500} height={48} className="w-full h-full" />
                       </div>
                     </div>
@@ -1467,36 +1492,35 @@ const App = () => {
             </div>
 
             {/* ANALYSIS GRAPH */}
-
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-              <h2 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                <Activity className="w-4 h-4 text-slate-400" /> RGB Channels
+            <div className="bg-[#F2F1EE] p-5 border border-[#D4D3D0] rounded-sm">
+              <h2 className="font-semibold text-[#1C1C1A] text-[10px] uppercase tracking-widest mb-4 flex items-center gap-2">
+                <Activity className="w-3 h-3 text-[#8A8A88]" /> RGB Channels
               </h2>
-              <div className="w-full h-48 bg-slate-50 rounded border border-slate-100 overflow-hidden mb-4">
+              <div className="w-full h-48 bg-[#E9E8E5] border border-[#D4D3D0] overflow-hidden mb-4">
                 <canvas ref={graphRef} width={500} height={192} className="w-full h-full" />
               </div>
               <div className="space-y-2">
-                <h3 className="text-xs font-semibold text-slate-500 flex items-center gap-2">
+                <h3 className="text-[10px] font-semibold text-[#8A8A88] flex items-center gap-2 uppercase tracking-widest">
                   <Eye className="w-3 h-3" /> Shader Preview
                 </h3>
-                <div className="w-full h-20 bg-slate-100 rounded-md border border-slate-200 overflow-hidden">
-                  <canvas ref={shaderCanvasRef} width={500} height={80} className="w-full h-full" />
+                <div className="w-full h-16 bg-[#D4D3D0] border border-[#C4C3C0] overflow-hidden">
+                  <canvas ref={shaderCanvasRef} width={500} height={64} className="w-full h-full" />
                 </div>
               </div>
             </div>
           </div>
 
           {/* CODE OUTPUT */}
-          <div className="space-y-6 min-w-0">
-            <div className="bg-slate-900 text-slate-200 p-6 rounded-xl shadow-lg h-full flex flex-col overflow-hidden w-full">
+          <div className="space-y-4 min-w-0">
+            <div className="bg-[#181816] text-[#D8D8D6] p-5 rounded-sm h-full flex flex-col overflow-hidden w-full border border-[#2A2A28]">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="font-semibold text-white flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-yellow-400" /> Generated GLSL
+                <h2 className="font-semibold text-[#C8C8C6] text-[10px] uppercase tracking-widest flex items-center gap-2">
+                  Generated GLSL
                 </h2>
                 {glslCode && (
                   <button
                     onClick={() => navigator.clipboard.writeText(glslCode)}
-                    className="text-xs bg-slate-700 hover:bg-slate-600 text-white px-3 py-1 rounded"
+                    className="text-[10px] bg-[#2A2A28] hover:bg-[#3A3A38] text-[#C8C8C6] px-3 py-1.5 rounded-sm tracking-widest uppercase font-semibold transition-colors"
                   >
                     Copy
                   </button>
@@ -1505,16 +1529,16 @@ const App = () => {
 
               {/* Status badge */}
               {status === 'processing' && (
-                <div className="mb-3 flex items-center gap-2 text-xs text-yellow-400">
+                <div className="mb-3 flex items-center gap-2 text-[11px] text-[#C07830]">
                   <RefreshCw className="w-3 h-3 animate-spin" /> Processing…
                 </div>
               )}
 
-              <div className="flex-1 font-mono text-xs leading-relaxed overflow-x-auto whitespace-pre bg-slate-950 p-4 rounded-lg border border-slate-800 w-full min-w-0">
+              <div className="flex-1 font-mono text-xs leading-relaxed overflow-x-auto whitespace-pre bg-[#111110] p-4 border border-[#2A2A28] w-full min-w-0">
                 {glslCode || '// Upload an image and select a mode...'}
               </div>
               {error && (
-                <div className="mt-4 p-3 bg-red-900/30 border border-red-800/50 text-red-200 text-sm rounded flex items-center gap-2">
+                <div className="mt-4 p-3 bg-red-900/20 border border-red-900/40 text-red-300 text-xs rounded-sm flex items-center gap-2">
                   <AlertCircle className="w-4 h-4" /> {error}
                 </div>
               )}
