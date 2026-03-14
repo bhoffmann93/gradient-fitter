@@ -26,5 +26,5 @@ export const GENERATIVE_PIXEL_SAMPLE = 3000;
 export const GRAPH_Y_MIN = -0.25;
 export const GRAPH_Y_MAX = 1.25;
 
-export const COLORMIND_API_URL = 'http://colormind.io/api/';
-export const COLORMIND_LIST_URL = 'http://colormind.io/list/';
+export const COLORMIND_API_URL = 'https://solitary-paper-83a2.b-hoffmann.workers.dev/api/';
+export const COLORMIND_LIST_URL = 'https://solitary-paper-83a2.b-hoffmann.workers.dev/list/';
