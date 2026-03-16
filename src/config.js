@@ -18,7 +18,13 @@ export const DEFAULTS = {
 
 export const SOLVER_STEPS = 5000;
 export const IMAGE_MAX_SIZE = 500;
-export const POINT_HIT_RADIUS = 20;
+export const POINT_HIT_RADIUS = 15;
+export const OVERLAY_LINE_WIDTH = 2.5;
+export const OVERLAY_LINE_OUTLINE = 4;
+export const OVERLAY_NODE_RADIUS = 7;
+export const OVERLAY_NODE_RADIUS_HOVER = 9;
+export const OVERLAY_NODE_OUTLINE = 2;
+export const OVERLAY_NODE_RING = 14;
 export const KMEANS_RUNS = 24;
 export const DOMINANT_PIXEL_SAMPLE = 10000;
 export const API_SEED_PIXEL_SAMPLE = 5000;

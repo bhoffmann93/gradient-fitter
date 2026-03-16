@@ -13,6 +13,11 @@ const ALGO_DESCRIPTIONS = {
 
 const LineModeSettings = ({ fitMode, setFitMode, degree, setDegree }) => (
   <div className="space-y-3">
+    <div className="flex items-center gap-2">
+      <span className="text-[9px] font-semibold text-[var(--text-muted)] uppercase tracking-widest">Fit Function</span>
+      <div className="flex-1 border-t border-[var(--border)]" />
+    </div>
+
     <div className="flex bg-[var(--surface-muted)] p-0.5 rounded-sm">
       {['poly', 'cosine'].map((mode) => (
         <button
@@ -29,9 +34,11 @@ const LineModeSettings = ({ fitMode, setFitMode, degree, setDegree }) => (
       ))}
     </div>
 
-    <p className="text-[10px] text-[var(--text-muted)] leading-relaxed">
-      {ALGO_DESCRIPTIONS[fitMode]}
-    </p>
+    <div className="min-h-[40px]">
+      <p key={fitMode} className="text-[10px] text-[var(--text-muted)] leading-relaxed" style={{ animation: 'fadeIn 0.15s ease' }}>
+        {ALGO_DESCRIPTIONS[fitMode]}
+      </p>
+    </div>
 
     <Collapsible open={fitMode === 'cosine'}>
       <p className="text-[10px] text-[var(--text-muted)] pt-0.5">
