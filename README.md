@@ -33,7 +33,7 @@ Dominance weighting available for catmull-rom and linear which places the stops 
 
 ## About
 
-This project was built as a **vibe coding experiment** to test [Claude Code](https://claude.ai/code)'s capabilities. The entire codebase was written through Claude Code sessions with no manual code editing.
+This project was built with [Claude Code](https://claude.ai/code)
 
 ---
 
