@@ -4,7 +4,7 @@ A browser tool for extracting color gradients from images and fitting them to a 
 
 **Live demo:** https://www.bernhard-hoffmann.com/gradient-fitter/
 
-![Gradient Fitter](screenshot.png)
+
 
 ---
 
