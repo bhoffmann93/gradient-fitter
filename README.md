@@ -1,7 +1,5 @@
 # gradient-fitter
 
-A browser tool for extracting color gradients from images and fitting them to a mathematical function — output as GLSL, HLSL, JavaScript, or TypeScript, ready to drop into your shader or code.
-
 ![Gradient Fitter](screenshot.png?v=2)
 
 **Live Version:** https://www.bernhard-hoffmann.com/gradient-fitter/
@@ -13,7 +11,7 @@ A browser tool for extracting color gradients from images and fitting them to a 
 
 ## Description
 
-Upload an image, draw a sample line or extract a palette, and the tool fits the colors to a mathematical function. The output is a `palette(float t)` function, which returns normalized (0.0-1.0) RGB Values for t (0.0-1.0). Available as GLSL, HLSL, JavaScript, or TypeScript.
+A browser tool for extracting color gradients from images. Upload an image, draw a sample line or extract a palette, and the tool fits the colors to a mathematical function. The output is a `palette(float t)` function, which returns normalized (0.0-1.0) RGB Values for t (0.0-1.0). Available as GLSL, HLSL, JavaScript, or TypeScript.
 
 Two modes:
 
