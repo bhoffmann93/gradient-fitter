@@ -64,7 +64,7 @@ const buildGLSL = ({ colors, tValues }, { linearLight = false } = {}) => {
     code += `    vec3 p2 = colors[min(i + 1, ${n - 1})];\n`;
     code += `    vec3 p3 = colors[min(i + 2, ${n - 1})];\n`;
   } else {
-    code += `    // rgb = color (${colorSpace}), a = stop position\n    vec4 colors[${n}] = vec4[](\n`;
+    code += `    // rgb = color (${colorSpace}), w = stop position\n    vec4 colors[${n}] = vec4[](\n`;
     code += colors
       .map(
         (c, i) =>
