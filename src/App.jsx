@@ -61,7 +61,7 @@ const App = () => {
   const applyImageFilters = () => {
     if (!originalDataRef.current || !canvasRef.current) return;
     const { width: w, height: h, data: src } = originalDataRef.current;
-    const ctx = canvasRef.current.getContext('2d');
+    const ctx = canvasRef.current.getContext('2d', { willReadFrequently: true });
     const destImageData = ctx.createImageData(w, h);
     const dest = destImageData.data;
     const min = minLevel / 255,
@@ -98,7 +98,7 @@ const App = () => {
     setError(null);
     setTimeout(() => {
       try {
-        const ctx = canvasRef.current.getContext('2d');
+        const ctx = canvasRef.current.getContext('2d', { willReadFrequently: true });
         const w = canvasRef.current.width,
           h = canvasRef.current.height;
         const data = ctx.getImageData(0, 0, w, h).data;
@@ -153,7 +153,7 @@ const App = () => {
     setError(null);
     try {
       const imageData = canvasRef.current
-        .getContext('2d')
+        .getContext('2d', { willReadFrequently: true })
         .getImageData(0, 0, canvasRef.current.width, canvasRef.current.height);
       let colors;
       if (paletteMethod === 'dominant') {
@@ -279,7 +279,7 @@ const App = () => {
       canvasRef.current.height = h;
       uiCanvasRef.current.width = w * dpr;
       uiCanvasRef.current.height = h * dpr;
-      const ctx = canvasRef.current.getContext('2d');
+      const ctx = canvasRef.current.getContext('2d', { willReadFrequently: true });
       ctx.drawImage(img, 0, 0, w, h);
       originalDataRef.current = ctx.getImageData(0, 0, w, h);
       apiSeedsRef.current = null;
@@ -359,7 +359,7 @@ const App = () => {
               </button>
             ))}
           </div>
-          <span className="text-[11px] font-semibold tracking-widest text-[var(--text-muted)] uppercase select-none">
+          <span className="text-[11px] font-semibold tracking-widest text-[var(--text-muted)] uppercase select-none ml-auto">
             Gradient Fitter
           </span>
         </div>
