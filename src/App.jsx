@@ -465,7 +465,7 @@ const App = () => {
                     </div>
                   </div>
                   <div className={`absolute inset-0 ${rightTab !== 'code' ? 'invisible pointer-events-none' : ''}`}>
-                    <CodePanel glslCode={glslCode} status={status} error={error} />
+                    <CodePanel glslCode={glslCode} status={status} error={error} className="h-full" />
                   </div>
                 </div>
               </>

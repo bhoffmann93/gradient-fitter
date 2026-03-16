@@ -7,7 +7,8 @@ const fit = (colors, { tValues = null } = {}) => ({
 
 const evaluate = ({ colors, tValues }, t) => {
   const n = colors.length;
-  let segIdx = n - 2, localT = 1.0;
+  let segIdx = n - 2,
+    localT = 1.0;
   for (let j = 0; j < n - 1; j++) {
     if (t <= tValues[j + 1] || j === n - 2) {
       segIdx = j;
@@ -17,8 +18,13 @@ const evaluate = ({ colors, tValues }, t) => {
     }
   }
   const p = (idx) => colors[Math.max(0, Math.min(n - 1, idx))];
-  const p0 = p(segIdx - 1), p1 = p(segIdx), p2 = p(segIdx + 1), p3 = p(segIdx + 2);
-  const lt = localT, lt2 = lt * lt, lt3 = lt2 * lt;
+  const p0 = p(segIdx - 1),
+    p1 = p(segIdx),
+    p2 = p(segIdx + 1),
+    p3 = p(segIdx + 2);
+  const lt = localT,
+    lt2 = lt * lt,
+    lt3 = lt2 * lt;
   const b1 = -lt3 + 2 * lt2 - lt;
   const b2 = 3 * lt3 - 5 * lt2 + 2;
   const b3 = -3 * lt3 + 4 * lt2 + lt;
@@ -42,11 +48,13 @@ const buildGLSL = ({ colors, tValues }, { linearLight = false } = {}) => {
   code += `    float b3 = -3.0 * t3 + 4.0 * t2 + t;\n`;
   code += `    float b4 = t3 - t2;\n`;
   code += `    return 0.5 * (b1 * p0 + b2 * p1 + b3 * p2 + b4 * p3);\n}\n\n`;
-  code += `vec3 catPalette(float t) {\n`;
+  code += `vec3 catmullPalette(float t) {\n`;
 
   if (isUniform) {
-    code += `    vec3 colors[${n}] = vec3[]( // ${colorSpace}\n`;
-    code += colors.map((c, i) => `        vec3(${fmtGlsl(c.r)}, ${fmtGlsl(c.g)}, ${fmtGlsl(c.b)})${i < n - 1 ? ',' : ''}`).join('\n');
+    code += `    // ${colorSpace}\n    vec3 colors[${n}] = vec3[](\n`;
+    code += colors
+      .map((c, i) => `        vec3(${fmtGlsl(c.r)}, ${fmtGlsl(c.g)}, ${fmtGlsl(c.b)})${i < n - 1 ? ',' : ''}`)
+      .join('\n');
     code += `\n    );\n`;
     code += `    float f = clamp(t, 0.0, 1.0) * ${n - 1}.0;\n`;
     code += `    int i = clamp(int(f), 0, ${n - 2});\n`;
@@ -56,8 +64,13 @@ const buildGLSL = ({ colors, tValues }, { linearLight = false } = {}) => {
     code += `    vec3 p2 = colors[min(i + 1, ${n - 1})];\n`;
     code += `    vec3 p3 = colors[min(i + 2, ${n - 1})];\n`;
   } else {
-    code += `    vec4 colors[${n}] = vec4[]( // xyz = color (${colorSpace}), w = stop position\n`;
-    code += colors.map((c, i) => `        vec4(${fmtGlsl(c.r)}, ${fmtGlsl(c.g)}, ${fmtGlsl(c.b)}, ${fmtGlsl(tValues[i])})${i < n - 1 ? ',' : ''}`).join('\n');
+    code += `    // rgb = color (${colorSpace}), a = stop position\n    vec4 colors[${n}] = vec4[](\n`;
+    code += colors
+      .map(
+        (c, i) =>
+          `        vec4(${fmtGlsl(c.r)}, ${fmtGlsl(c.g)}, ${fmtGlsl(c.b)}, ${fmtGlsl(tValues[i])})${i < n - 1 ? ',' : ''}`,
+      )
+      .join('\n');
     code += `\n    );\n`;
     code += `    int i = ${n - 2}; float localT = 1.0;\n`;
     for (let j = 0; j < n - 1; j++) {

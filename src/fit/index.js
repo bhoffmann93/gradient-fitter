@@ -27,7 +27,7 @@ export const LINEAR_LIGHT_MODES = ['linear', 'catmull'];
 
 export const buildColorGLSL = (colors) => {
   const fmt = (n) => n.toFixed(3);
-  let code = `// Extracted colors — sRGB, luminance sorted\n`;
+  let code = `// Extracted colors – sRGB, luminance sorted\n`;
   colors.forEach((c, i) => {
     code += `vec3 color${i + 1} = vec3(${fmt(c.r)}, ${fmt(c.g)}, ${fmt(c.b)});\n`;
   });

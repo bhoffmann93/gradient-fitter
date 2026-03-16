@@ -27,7 +27,7 @@ const buildGLSL = ({ colors, tValues }, { linearLight = false } = {}) => {
 
   let code = `vec3 linearPalette(float t) {\n`;
   if (isUniform) {
-    code += `    vec3 colors[${n}] = vec3[]( // ${colorSpace}\n`;
+    code += `    // ${colorSpace}\n    vec3 colors[${n}] = vec3[](\n`;
     code += colors.map((c, i) => `        vec3(${fmtGlsl(c.r)}, ${fmtGlsl(c.g)}, ${fmtGlsl(c.b)})${i < n - 1 ? ',' : ''}`).join('\n');
     code += `\n    );\n`;
     code += `    float f = clamp(t, 0.0, 1.0) * ${n - 1}.0;\n`;
@@ -39,7 +39,7 @@ const buildGLSL = ({ colors, tValues }, { linearLight = false } = {}) => {
       code += `    return mix(colors[i], colors[i + 1], fract(f));\n}`;
     }
   } else {
-    code += `    vec4 colors[${n}] = vec4[]( // xyz = color (${colorSpace}), w = stop position\n`;
+    code += `    // xyz = color (${colorSpace}), w = stop position\n    vec4 colors[${n}] = vec4[](\n`;
     code += colors.map((c, i) => `        vec4(${fmtGlsl(c.r)}, ${fmtGlsl(c.g)}, ${fmtGlsl(c.b)}, ${fmtGlsl(tValues[i])})${i < n - 1 ? ',' : ''}`).join('\n');
     code += `\n    );\n`;
     code += `    vec3 col = colors[${n - 1}].rgb;\n`;

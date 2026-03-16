@@ -1,8 +1,8 @@
 import React from 'react';
 import { RefreshCw, AlertCircle } from 'lucide-react';
 
-const CodePanel = ({ glslCode, status, error }) => (
-  <div className="bg-[var(--code-bg)] text-[var(--code-text)] p-5 flex flex-col min-h-[480px]">
+const CodePanel = ({ glslCode, status, error, className = '' }) => (
+  <div className={`bg-[var(--code-bg)] text-[var(--code-text)] p-5 flex flex-col min-h-[480px] ${className}`}>
     <div className="flex justify-between items-center mb-4">
       {status === 'processing' ? (
         <div className="flex items-center gap-2 text-[11px] text-[var(--accent)]">
@@ -19,7 +19,7 @@ const CodePanel = ({ glslCode, status, error }) => (
       )}
     </div>
 
-    <div className="flex-1 font-mono text-xs leading-relaxed overflow-auto whitespace-pre bg-[var(--code-surface)] p-4 border border-[var(--code-border)] w-full min-w-0">
+    <div className="flex-1 min-h-0 font-mono text-xs leading-relaxed overflow-auto whitespace-pre bg-[var(--code-surface)] p-4 border border-[var(--code-border)] w-full min-w-0">
       {glslCode || '// Upload an image and select a mode...'}
     </div>
 
