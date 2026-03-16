@@ -1,6 +1,6 @@
 # gradient-fitter
 
-A browser tool for extracting color gradients from images and fitting them into GLSL shader functions — ready to paste into your fragment shader.
+A browser tool for extracting color gradients from images and fitting them to a mathematical function — output as GLSL, HLSL, JavaScript, or TypeScript, ready to drop into your shader or code.
 
 **Live demo:** https://www.bernhard-hoffmann.com/gradient-fitter/
 
@@ -8,32 +8,41 @@ A browser tool for extracting color gradients from images and fitting them into 
 
 ---
 
-## What it does
+## Description
 
-Upload an image, draw a sample line or extract a palette, and the tool fits the colors to a mathematical function. The output is a `palette(float t)` GLSL function you can drop directly into a shader.
+Upload an image, draw a sample line or extract a palette, and the tool fits the colors to a mathematical function. The output is a `palette(float t)` function — available as GLSL, HLSL, JavaScript, or TypeScript.
 
 Two modes:
 
 **Line Sample** — drag a line across the image to sample colors along it. Fits either a polynomial (least-squares, configurable degree) or a cosine palette ([Inigo Quilez Cosine Palette](https://iquilezles.org/articles/palettes/)).
 
-**Palette Extract** — extracts dominant colors from the whole image, then fits them using one of five methods:
+**Palette Extract** — extracts dominant colors from the whole image (dominant, generative, or via Colormind AI API), then fits them using one of four methods:
 
 - **Catmull-Rom** — smooth spline that passes exactly through each color
 - **Linear** — straight segments between stops
-
 - **Polynomial** — least-squares fitting, can overshoot
-- **Cosine** — smooth, option to loop perfectly ([Inigo Quilez Cosine Palette](https://iquilezles.org/articles/palettes/)).
+- **Cosine** — smooth, option to loop perfectly ([Inigo Quilez Cosine Palette](https://iquilezles.org/articles/palettes/))
 
-Both modes support **interpolation in Linear RGB** for Linear and Catmull modes — avoids the dark muddy midpoints you get when interpolating in sRGB space. The GLSL output includes the sRGB conversion.
+Both modes support **interpolation in Linear RGB** for Linear and Catmull modes — avoids the dark muddy midpoints you get when interpolating in sRGB space. The output includes the sRGB conversion.
 See: [What every coder should know about gamma](https://blog.johnnovak.net/2016/09/21/what-every-coder-should-know-about-gamma/).
 
-Dominance weighting available for catmull-rom and linear which places the stops in relation to the dominance of colors extracted.
+**Dominance Weighting** available for catmull-rom and linear which places the stops in relation to the dominance of colors extracted.
+
+## Curve Fitting
+
+**Polynomial** — builds the normal equations AᵀAx = Aᵀb from sampled RGB values and solves per channel using Gaussian elimination with partial pivoting. Degree 1–6, configurable.
+
+**Cosine** — fits a + b·cos(2π(ct+d)) per channel via random search with local perturbation. No closed-form solution exists for this parametric form; multiple restarts are run and the best fit by MSE is kept.
+
+**Linear** — direct linear interpolation between color stops. With dominance weighting the stops are spaced by pixel area rather than uniformly.
+
+**Catmull-Rom** — smooth cubic spline through the extracted color stops using the standard Catmull-Rom basis. With dominance weighting the stop spacing is area-weighted.
 
 ---
 
 ## About
 
-This project was built as a **vibe coding experiment** to test [Claude Code](https://claude.ai/code)'s capabilities. The entire codebase was written through Claude Code sessions with no manual code editing.
+This project was built with [Claude Code](https://claude.ai/code)'s capabilities.
 
 ---
 

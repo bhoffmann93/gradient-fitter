@@ -39,7 +39,7 @@ const ImagePanel = ({
       </div>
 
       <div
-        className="relative flex justify-center items-center bg-[var(--bg)] border-2 border-dashed border-[var(--border-strong)] overflow-hidden min-h-[200px] max-h-[380px] select-none"
+        className="relative flex justify-center items-center bg-[var(--bg)] border-2 border-dashed border-[var(--border-strong)] overflow-hidden min-h-[250px] max-h-[380px] select-none"
         onClick={() => !imageSrc && fileInputRef.current?.click()}
       >
         {!imageSrc && (
@@ -50,24 +50,26 @@ const ImagePanel = ({
               <span className="text-[10px] opacity-60 tracking-wider">PNG · JPG · WebP</span>
             </div>
             <div className="flex flex-col items-center gap-2 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
-              <span className="text-[9px] font-semibold uppercase tracking-widest text-[var(--text-muted)] opacity-60">Examples</span>
+              <span className="text-[9px] font-semibold uppercase tracking-widest text-[var(--text-muted)] opacity-60">
+                Examples
+              </span>
               <div className="flex gap-2">
-              {EXAMPLES.map(({ src, label }) => (
-                <button
-                  key={label}
-                  onClick={() => onExampleLoad(src)}
-                  className="flex flex-col items-center gap-1 group"
-                >
-                  <img
-                    src={src}
-                    alt={label}
-                    className="w-16 h-10 object-cover rounded-sm border border-[var(--border)] group-hover:border-[var(--accent)] transition-colors"
-                  />
-                  <span className="text-[9px] font-semibold uppercase tracking-widest text-[var(--text-muted)] group-hover:text-[var(--accent)] transition-colors">
-                    {label}
-                  </span>
-                </button>
-              ))}
+                {EXAMPLES.map(({ src, label }) => (
+                  <button
+                    key={label}
+                    onClick={() => onExampleLoad(src)}
+                    className="flex flex-col items-center gap-1 group"
+                  >
+                    <img
+                      src={src}
+                      alt={label}
+                      className="w-16 h-10 object-cover rounded-sm border border-[var(--border)] group-hover:border-[var(--accent)] transition-colors"
+                    />
+                    <span className="text-[9px] font-semibold uppercase tracking-widest text-[var(--text-muted)] group-hover:text-[var(--accent)] transition-colors">
+                      {label}
+                    </span>
+                  </button>
+                ))}
               </div>
             </div>
           </div>

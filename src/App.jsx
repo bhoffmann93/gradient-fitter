@@ -1,6 +1,6 @@
 import React from 'react';
 import { DEFAULTS, IMAGE_MAX_SIZE, POINT_HIT_RADIUS } from './config.js';
-import { FIT_MODES, buildColorGLSL, linearize, LINEAR_LIGHT_MODES } from './fit/index.js';
+import { FIT_MODES, buildCode, buildColorCode, linearize, LINEAR_LIGHT_MODES } from './fit/index.js';
 import { computeWeightedTValues } from './math/cosine.js';
 import { extractDominant, extractGenerative } from './palette/extract.js';
 import { generateColormindPalette, fetchColormindModels } from './palette/colormind.js';
@@ -39,6 +39,7 @@ const App = () => {
   const [minLevel, setMinLevel] = React.useState(DEFAULTS.minLevel);
   const [maxLevel, setMaxLevel] = React.useState(DEFAULTS.maxLevel);
 
+  const [language, setLanguage] = React.useState('glsl');
   const [coefficients, setCoefficients] = React.useState(null);
   const [glslCode, setGlslCode] = React.useState('');
   const [error, setError] = React.useState(null);
@@ -120,7 +121,7 @@ const App = () => {
         if (samples.length < 2) throw new Error('Line too short');
         const result = FIT_MODES[fitMode].fit(samples, { degree });
         setCoefficients(result);
-        setGlslCode(FIT_MODES[fitMode].buildGLSL(result, { linearLight }));
+        setGlslCode(buildCode(fitMode, result, { linearLight }, language));
         drawGraph(graphRef.current, samples, result, fitMode, linearLight);
         renderGradientPreview(shaderCanvasRef.current, result, fitMode, linearLight);
         drawOverlay(uiCanvasRef.current, canvasRef.current, p1, p2);
@@ -140,7 +141,7 @@ const App = () => {
     const result = FIT_MODES[paletteFitMode].fit(fittingColors, { degree, lockFrequency, tValues });
     setCoefficients(result);
     setGlslCode(
-      FIT_MODES[paletteFitMode].buildGLSL(result, { linearLight: useLinearLight }) + '\n\n' + buildColorGLSL(colors),
+      buildCode(paletteFitMode, result, { linearLight: useLinearLight }, language) + '\n\n' + buildColorCode(colors, language),
     );
     drawGraph(graphRef.current, colors, result, paletteFitMode, useLinearLight);
     renderGradientPreview(shaderCanvasRef.current, result, paletteFitMode, useLinearLight);
@@ -329,6 +330,19 @@ const App = () => {
   }, [paletteMethod]);
 
   React.useEffect(() => {
+    if (!coefficients || !imageSrc) return;
+    if (appMode === 'line') {
+      setGlslCode(buildCode(fitMode, coefficients, { linearLight }, language));
+    } else if (appMode === 'palette' && extractedColorsRef.current.length >= 2) {
+      const useLinearLight = linearLight && LINEAR_LIGHT_MODES.includes(paletteFitMode);
+      setGlslCode(
+        buildCode(paletteFitMode, coefficients, { linearLight: useLinearLight }, language) +
+          '\n\n' + buildColorCode(extractedColorsRef.current, language),
+      );
+    }
+  }, [language]);
+
+  React.useEffect(() => {
     if (!imageSrc) return;
     if (appMode === 'palette') {
       if (canvasRef.current && uiCanvasRef.current) {
@@ -413,7 +427,7 @@ const App = () => {
                   <LineModeSettings fitMode={fitMode} setFitMode={setFitMode} degree={degree} setDegree={setDegree} />
                 </div>
                 <div className="border-t border-[var(--border)]">
-                  <CodePanel glslCode={glslCode} status={status} error={error} />
+                  <CodePanel glslCode={glslCode} status={status} error={error} language={language} setLanguage={setLanguage} />
                 </div>
               </>
             ) : (
@@ -479,7 +493,7 @@ const App = () => {
                     </div>
                   </div>
                   <div className={`absolute inset-0 ${rightTab !== 'code' ? 'invisible pointer-events-none' : ''}`}>
-                    <CodePanel glslCode={glslCode} status={status} error={error} className="h-full" />
+                    <CodePanel glslCode={glslCode} status={status} error={error} language={language} setLanguage={setLanguage} className="h-full" />
                   </div>
                 </div>
               </>

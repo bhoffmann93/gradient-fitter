@@ -1,5 +1,23 @@
 import React from 'react';
 
+const ALGO_DESCRIPTIONS = {
+  poly: {
+    summary: 'Least-squares polynomial fit per RGB channel. Higher degree = more flexibility but may overshoot outside 0–1. Use degree 3–4 for most gradients.',
+    algorithm: 'Builds the normal equations AᵀAx = Aᵀb from the sampled pixel data and solves per channel using Gaussian elimination with partial pivoting.',
+  },
+  cosine: {
+    summary: (
+      <>
+        Fits a + b·cos(2π(ct+d)) per channel. Smooth, loops perfectly with freq locked. Best for organic gradients.{' '}
+        <a href="https://iquilezles.org/articles/palettes/" target="_blank" rel="noopener noreferrer" className="underline hover:text-[var(--text)] transition-colors">
+          iquilezles.org/articles/palettes
+        </a>
+      </>
+    ),
+    algorithm: 'Solved via random search with local perturbation — no closed-form solution exists for this parametric form. Runs multiple restarts and keeps the best fit by mean squared error.',
+  },
+};
+
 const LineModeSettings = ({ fitMode, setFitMode, degree, setDegree }) => (
   <div className="space-y-3">
     <div className="flex bg-[var(--surface-muted)] p-0.5 rounded-sm">
@@ -19,21 +37,10 @@ const LineModeSettings = ({ fitMode, setFitMode, degree, setDegree }) => (
     </div>
 
     <p className="text-[10px] text-[var(--text-muted)] leading-relaxed">
-      {fitMode === 'poly' &&
-        'Least-squares polynomial fit per RGB channel. Higher degree = more flexibility but may overshoot outside 0–1. Use degree 3–4 for most gradients.'}
-      {fitMode === 'cosine' && (
-        <>
-          Fits a + b·cos(2π(ct+d)) per channel. Smooth, loops perfectly with freq locked. Best for organic gradients.{' '}
-          <a
-            href="https://iquilezles.org/articles/palettes/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline hover:text-[var(--text)] transition-colors"
-          >
-            iquilezles.org/articles/palettes
-          </a>
-        </>
-      )}
+      {ALGO_DESCRIPTIONS[fitMode].summary}
+    </p>
+    <p className="text-[10px] text-[var(--text-muted)] leading-relaxed opacity-60">
+      {ALGO_DESCRIPTIONS[fitMode].algorithm}
     </p>
 
     {fitMode === 'poly' && (
