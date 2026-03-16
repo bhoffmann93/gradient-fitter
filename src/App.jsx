@@ -48,6 +48,8 @@ const App = () => {
   const [p1, setP1] = React.useState(DEFAULTS.p1);
   const [p2, setP2] = React.useState(DEFAULTS.p2);
   const [activePoint, setActivePoint] = React.useState(null);
+  const [hoveredPoint, setHoveredPoint] = React.useState(null);
+  const hoveredPointRef = React.useRef(null);
 
   const originalDataRef = React.useRef(null);
   const canvasRef = React.useRef(null);
@@ -124,7 +126,7 @@ const App = () => {
         setGlslCode(buildCode(fitMode, result, { linearLight }, language));
         drawGraph(graphRef.current, samples, result, fitMode, linearLight);
         renderGradientPreview(shaderCanvasRef.current, result, fitMode, linearLight);
-        drawOverlay(uiCanvasRef.current, canvasRef.current, p1, p2);
+        drawOverlay(uiCanvasRef.current, canvasRef.current, p1, p2, hoveredPointRef.current);
         setStatus('done');
       } catch (e) {
         setError(e.message || 'Error during fitting');
@@ -203,12 +205,24 @@ const App = () => {
   };
 
   const handleMouseMove = (e) => {
-    if (!activePoint || !uiCanvasRef.current) return;
+    if (!uiCanvasRef.current || !imageSrc || appMode !== 'line') return;
     const rect = uiCanvasRef.current.getBoundingClientRect();
-    const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
-    if (activePoint === 'p1') setP1({ x, y });
-    else setP2({ x, y });
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    if (activePoint) {
+      const x = Math.max(0, Math.min(1, mx / rect.width));
+      const y = Math.max(0, Math.min(1, my / rect.height));
+      if (activePoint === 'p1') setP1({ x, y });
+      else setP2({ x, y });
+    } else {
+      const d1 = Math.hypot(mx - p1.x * rect.width, my - p1.y * rect.height);
+      const d2 = Math.hypot(mx - p2.x * rect.width, my - p2.y * rect.height);
+      const newHover = d1 < POINT_HIT_RADIUS ? 'p1' : d2 < POINT_HIT_RADIUS ? 'p2' : null;
+      if (newHover !== hoveredPointRef.current) {
+        hoveredPointRef.current = newHover;
+        setHoveredPoint(newHover);
+      }
+    }
   };
 
   const handleMouseUp = () => {
@@ -216,6 +230,12 @@ const App = () => {
       setActivePoint(null);
       performFitting();
     }
+  };
+
+  const handleMouseLeave = () => {
+    hoveredPointRef.current = null;
+    setHoveredPoint(null);
+    handleMouseUp();
   };
 
   const TOUCH_HIT_RADIUS = 40;
@@ -250,6 +270,24 @@ const App = () => {
     }
   };
 
+  const handleReset = () => {
+    setImageSrc(null);
+    setP1(DEFAULTS.p1);
+    setP2(DEFAULTS.p2);
+    setCoefficients(null);
+    setGlslCode('');
+    setError(null);
+    setStatus('idle');
+    setExtractedColors([]);
+    setPaletteDrawData(null);
+    extractedColorsRef.current = [];
+    apiSeedsRef.current = null;
+    for (const ref of [shaderCanvasRef, graphRef, uiCanvasRef]) {
+      const canvas = ref.current;
+      if (canvas) canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+    }
+  };
+
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -279,8 +317,10 @@ const App = () => {
       h = Math.round(h);
       canvasRef.current.width = w;
       canvasRef.current.height = h;
-      uiCanvasRef.current.width = w;
-      uiCanvasRef.current.height = h;
+      const MIN_UI_PIXELS = 800;
+      const uiScale = Math.max(1, MIN_UI_PIXELS / Math.max(w, h));
+      uiCanvasRef.current.width = Math.round(w * uiScale);
+      uiCanvasRef.current.height = Math.round(h * uiScale);
       const ctx = canvasRef.current.getContext('2d', { willReadFrequently: true });
       ctx.drawImage(img, 0, 0, w, h);
       originalDataRef.current = ctx.getImageData(0, 0, w, h);
@@ -296,6 +336,12 @@ const App = () => {
   React.useEffect(() => {
     if (imageSrc && appMode === 'line') performFitting();
   }, [degree, fitMode]);
+
+  React.useEffect(() => {
+    if (imageSrc && appMode === 'line' && uiCanvasRef.current && canvasRef.current) {
+      drawOverlay(uiCanvasRef.current, canvasRef.current, p1, p2, hoveredPointRef.current);
+    }
+  }, [p1, p2, hoveredPoint]);
 
   React.useEffect(() => {
     if (imageSrc && appMode === 'palette') {
@@ -402,9 +448,13 @@ const App = () => {
               uiCanvasRef={uiCanvasRef}
               onImageUpload={handleImageUpload}
               onExampleLoad={handleExampleLoad}
+              onReset={handleReset}
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseLeave}
+              hoveredPoint={hoveredPoint}
+              activePoint={activePoint}
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}

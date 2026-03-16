@@ -17,9 +17,13 @@ const ImagePanel = ({
   uiCanvasRef,
   onImageUpload,
   onExampleLoad,
+  onReset,
   onMouseDown,
   onMouseMove,
   onMouseUp,
+  onMouseLeave,
+  hoveredPoint,
+  activePoint,
   onTouchStart,
   onTouchMove,
   onTouchEnd,
@@ -42,14 +46,24 @@ const ImagePanel = ({
         <h2 className="font-semibold text-[var(--text)] text-[10px] uppercase tracking-widest">
           {appMode === 'line' ? (imageSrc ? 'Sample Line' : 'Input') : 'Palette Source'}
         </h2>
-        <label className="text-[10px] font-semibold bg-[var(--text)] text-[var(--bg)] px-3 py-1.5 rounded-sm cursor-pointer hover:bg-[var(--text-hover)] tracking-widest uppercase transition-colors">
-          {imageSrc ? 'Change' : 'Upload'}
-          <input ref={fileInputRef} type="file" accept="image/*" onChange={onImageUpload} className="hidden" />
-        </label>
+        <div className="flex gap-2">
+          {imageSrc && (
+            <button
+              onClick={onReset}
+              className="text-[10px] font-semibold text-[var(--text-muted)] border border-[var(--border)] px-3 py-1.5 rounded-sm cursor-pointer hover:text-[var(--text)] hover:border-[var(--border-strong)] tracking-widest uppercase transition-colors"
+            >
+              Reset
+            </button>
+          )}
+          <label className="text-[10px] font-semibold bg-[var(--text)] text-[var(--bg)] px-3 py-1.5 rounded-sm cursor-pointer hover:bg-[var(--text-hover)] tracking-widest uppercase transition-colors">
+            {imageSrc ? 'Change' : 'Upload'}
+            <input ref={fileInputRef} type="file" accept="image/*" onChange={onImageUpload} className="hidden" />
+          </label>
+        </div>
       </div>
 
       <div
-        className={`relative flex justify-center items-center bg-[var(--bg)] border-2 border-dashed overflow-hidden min-h-[250px] max-h-[380px] select-none transition-colors ${dragging ? 'border-[var(--accent)]' : 'border-[var(--border-strong)]'}`}
+        className={`relative flex justify-center items-center bg-[var(--bg)] border-2 border-dashed overflow-hidden min-h-[300px] max-h-[456px] select-none transition-colors ${dragging ? 'border-[var(--accent)]' : 'border-[var(--border-strong)]'}`}
         onClick={() => !imageSrc && fileInputRef.current?.click()}
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
         onDragLeave={() => setDragging(false)}
@@ -90,16 +104,25 @@ const ImagePanel = ({
         <canvas ref={canvasRef} className="hidden" />
         <canvas
           ref={uiCanvasRef}
-          className={`max-w-full max-h-[380px] object-contain touch-none ${!imageSrc ? 'hidden' : 'block'} ${appMode === 'line' ? 'cursor-crosshair' : 'cursor-default'}`}
+          className={`max-w-full max-h-[456px] object-contain touch-none ${!imageSrc ? 'hidden' : 'block'} ${
+            appMode === 'line'
+              ? activePoint ? 'cursor-grabbing' : hoveredPoint ? 'cursor-grab' : 'cursor-default'
+              : 'cursor-default'
+          }`}
           onMouseDown={onMouseDown}
           onMouseMove={onMouseMove}
           onMouseUp={onMouseUp}
-          onMouseLeave={onMouseUp}
+          onMouseLeave={onMouseLeave || onMouseUp}
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
         />
       </div>
+      {imageSrc && appMode === 'line' && (
+        <p className="text-[9px] font-semibold uppercase tracking-widest text-[var(--text-muted)] opacity-50 text-center mt-2 pointer-events-none select-none">
+          Drag endpoints to adjust
+        </p>
+      )}
     </div>
   );
 };
