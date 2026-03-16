@@ -25,6 +25,16 @@ const ImagePanel = ({
   onTouchEnd,
 }) => {
   const fileInputRef = React.useRef(null);
+  const [dragging, setDragging] = React.useState(false);
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
+      onImageUpload({ target: { files: [file] } });
+    }
+  };
 
   return (
     <div className="bg-[var(--surface)] p-5 border border-[var(--border)] rounded-sm">
@@ -39,8 +49,11 @@ const ImagePanel = ({
       </div>
 
       <div
-        className="relative flex justify-center items-center bg-[var(--bg)] border-2 border-dashed border-[var(--border-strong)] overflow-hidden min-h-[250px] max-h-[380px] select-none"
+        className={`relative flex justify-center items-center bg-[var(--bg)] border-2 border-dashed overflow-hidden min-h-[250px] max-h-[380px] select-none transition-colors ${dragging ? 'border-[var(--accent)]' : 'border-[var(--border-strong)]'}`}
         onClick={() => !imageSrc && fileInputRef.current?.click()}
+        onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={handleDrop}
       >
         {!imageSrc && (
           <div className="flex flex-col items-center gap-4 pointer-events-none">

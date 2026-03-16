@@ -18,6 +18,12 @@ const Toggle = ({ on, onToggle, labelOn, labelOff }) => (
   </button>
 );
 
+const Collapsible = ({ open, children }) => (
+  <div className={`grid transition-[grid-template-rows] duration-200 ${open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+    <div className="overflow-hidden">{children}</div>
+  </div>
+);
+
 const FIT_MODE_ORDER = ['catmull', 'linear', 'poly', 'cosine'];
 
 const FIT_MODE_DESCRIPTIONS = {
@@ -109,8 +115,8 @@ const PaletteModeSettings = ({
       )}
     </div>
 
-    {paletteMethod === 'api' && (
-      <>
+    <Collapsible open={paletteMethod === 'api'}>
+      <div className="space-y-3 pt-0.5">
         <div className="flex items-center gap-3">
           <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 shrink-0 uppercase tracking-wider">
             Model
@@ -144,8 +150,8 @@ const PaletteModeSettings = ({
             {apiSeedCount} of 5
           </span>
         </div>
-      </>
-    )}
+      </div>
+    </Collapsible>
 
     <div className="flex items-center gap-2 pt-1">
       <span className="text-[9px] font-semibold text-[var(--text-muted)] uppercase tracking-widest">Fit Function</span>
@@ -169,25 +175,27 @@ const PaletteModeSettings = ({
     </div>
 
     <p className="text-[10px] text-[var(--text-muted)] leading-relaxed">
-      {paletteFitMode === 'cosine' ? (
-        <>
-          Fits a + b·cos(2π(ct+d)) per channel. Smooth, loops perfectly with freq locked. Best for organic gradients.{' '}
-          <a
-            href="https://iquilezles.org/articles/palettes/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline hover:text-[var(--text)] transition-colors"
-          >
-            iquilezles.org/articles/palettes
-          </a>
-        </>
-      ) : (
-        FIT_MODE_DESCRIPTIONS[paletteFitMode]
-      )}
+      {paletteFitMode === 'cosine'
+        ? 'Fits a + b·cos(2π(ct+d)) per channel. Smooth, loops perfectly with freq locked. Best for organic gradients.'
+        : FIT_MODE_DESCRIPTIONS[paletteFitMode]}
     </p>
 
-    {LINEAR_LIGHT_MODES.includes(paletteFitMode) && (
-      <div className="space-y-1.5">
+    <Collapsible open={paletteFitMode === 'cosine'}>
+      <p className="text-[10px] text-[var(--text-muted)] pt-0.5">
+        More info:{' '}
+        <a
+          href="https://iquilezles.org/articles/palettes/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:text-[var(--text)] transition-colors"
+        >
+          iquilezles.org/articles/palettes
+        </a>
+      </p>
+    </Collapsible>
+
+    <Collapsible open={LINEAR_LIGHT_MODES.includes(paletteFitMode)}>
+      <div className="space-y-1.5 pt-0.5">
         <div className="flex items-center gap-3">
           <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 uppercase tracking-wider">
             Interp. space
@@ -212,11 +220,11 @@ const PaletteModeSettings = ({
           </a>
         </p>
       </div>
-    )}
+    </Collapsible>
 
-    {paletteFitMode === 'poly' && (
-      <div className="flex items-center gap-4">
-        <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-16 uppercase tracking-wider">
+    <Collapsible open={paletteFitMode === 'poly'}>
+      <div className="flex items-center gap-4 pt-0.5">
+        <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 uppercase tracking-wider">
           Degree
         </label>
         <input
@@ -232,10 +240,10 @@ const PaletteModeSettings = ({
           {degree}
         </span>
       </div>
-    )}
+    </Collapsible>
 
-    {paletteMethod !== 'api' && (
-      <div className="space-y-1">
+    <Collapsible open={paletteMethod !== 'api'}>
+      <div className="space-y-1 pt-0.5">
         <div className="flex items-center gap-4">
           <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 uppercase tracking-wider">
             Colors
@@ -258,10 +266,10 @@ const PaletteModeSettings = ({
           them smoothly.
         </p>
       </div>
-    )}
+    </Collapsible>
 
-    {paletteFitMode === 'cosine' && (
-      <div className="flex items-center gap-3">
+    <Collapsible open={paletteFitMode === 'cosine'}>
+      <div className="flex items-center gap-3 pt-0.5">
         <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 uppercase tracking-wider">
           Lock freq
         </label>
@@ -270,10 +278,10 @@ const PaletteModeSettings = ({
           {lockFrequency ? 'Locked – gradient loops perfectly' : 'Free – more accurate fit, may not loop'}
         </span>
       </div>
-    )}
+    </Collapsible>
 
-    {(paletteFitMode === 'linear' || paletteFitMode === 'catmull') && paletteMethod !== 'api' && (
-      <div className="space-y-1.5">
+    <Collapsible open={(paletteFitMode === 'linear' || paletteFitMode === 'catmull') && paletteMethod !== 'api'}>
+      <div className="space-y-1.5 pt-0.5">
         <div className="flex items-center gap-3">
           <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 uppercase tracking-wider">
             Dominance
@@ -292,7 +300,7 @@ const PaletteModeSettings = ({
             : 'Color stops are evenly spaced. Each color gets equal range regardless of how much of the image it covers.'}
         </p>
       </div>
-    )}
+    </Collapsible>
 
     <div className={`space-y-1 ${extractedColors.length === 0 ? 'hidden' : ''}`}>
       <div className="flex items-center justify-between">

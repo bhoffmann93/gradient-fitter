@@ -393,7 +393,7 @@ const App = () => {
           </a>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.2fr] gap-5 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.2fr] gap-5 items-start lg:items-stretch">
           <div className="space-y-4 min-w-0">
             <ImagePanel
               imageSrc={imageSrc}
@@ -412,7 +412,7 @@ const App = () => {
             <GraphPanel graphRef={graphRef} shaderCanvasRef={shaderCanvasRef} />
           </div>
 
-          <div className="min-w-0 border border-[var(--border)] rounded-sm overflow-hidden">
+          <div className="min-w-0 border border-[var(--border)] rounded-sm overflow-hidden flex flex-col">
             {appMode === 'line' ? (
               <>
                 <div className="bg-[var(--surface)] p-5 space-y-5">
@@ -426,13 +426,13 @@ const App = () => {
                   />
                   <LineModeSettings fitMode={fitMode} setFitMode={setFitMode} degree={degree} setDegree={setDegree} />
                 </div>
-                <div className="border-t border-[var(--border)]">
-                  <CodePanel glslCode={glslCode} status={status} error={error} language={language} setLanguage={setLanguage} fitMode={fitMode} />
+                <div className="border-t border-[var(--border)] flex-1 flex flex-col">
+                  <CodePanel glslCode={glslCode} status={status} error={error} language={language} setLanguage={setLanguage} fitMode={fitMode} className="flex-1" />
                 </div>
               </>
             ) : (
               <>
-                <div className="flex bg-[var(--surface-muted)] border-b border-[var(--border)]">
+                <div className="flex bg-[var(--surface-muted)] border-b border-[var(--border)] shrink-0">
                   {[
                     ['settings', 'Settings'],
                     ['code', 'Code'],
@@ -450,9 +450,9 @@ const App = () => {
                     </button>
                   ))}
                 </div>
-                <div className="relative">
-                  <div className={rightTab === 'code' ? 'invisible pointer-events-none' : ''}>
-                    <div className="bg-[var(--surface)] p-5">
+                <div className="relative flex-1 min-h-0 overflow-hidden">
+                  <div className={`h-full ${rightTab === 'code' ? 'invisible pointer-events-none' : ''}`}>
+                    <div className="bg-[var(--surface)] p-5 h-full overflow-auto">
                       <div className="space-y-5">
                         <ImageAdjustPanel
                           contrast={contrast}

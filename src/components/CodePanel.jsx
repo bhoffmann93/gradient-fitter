@@ -23,7 +23,7 @@ const getExampleLink = (language, fitMode) => {
 };
 
 const CodePanel = ({ glslCode, status, error, language, setLanguage, fitMode, className = '' }) => (
-  <div className={`bg-[var(--code-bg)] text-[var(--code-text)] p-5 flex flex-col min-h-[480px] ${className}`}>
+  <div className={`bg-[var(--code-bg)] text-[var(--code-text)] p-5 flex flex-col ${className || 'min-h-[480px]'}`}>
     <div className="flex justify-between items-center mb-4 gap-3">
       <div className="flex bg-[var(--code-border)] rounded-sm p-0.5 shrink-0">
         {LANGS.map(({ id, label }) => (

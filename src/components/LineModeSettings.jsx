@@ -1,15 +1,14 @@
 import React from 'react';
 
+const Collapsible = ({ open, children }) => (
+  <div className={`grid transition-[grid-template-rows] duration-200 ${open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+    <div className="overflow-hidden">{children}</div>
+  </div>
+);
+
 const ALGO_DESCRIPTIONS = {
   poly: 'Least-squares polynomial fit per RGB channel. Higher degree = more flexibility but may overshoot outside 0–1. Use degree 3–4 for most gradients.',
-  cosine: (
-    <>
-      Fits a + b·cos(2π(ct+d)) per channel. Smooth, loops perfectly with freq locked. Best for organic gradients.{' '}
-      <a href="https://iquilezles.org/articles/palettes/" target="_blank" rel="noopener noreferrer" className="underline hover:text-[var(--text)] transition-colors">
-        iquilezles.org/articles/palettes
-      </a>
-    </>
-  ),
+  cosine: 'Fits a + b·cos(2π(ct+d)) per channel. Smooth, loops perfectly with freq locked. Best for organic gradients.',
 };
 
 const LineModeSettings = ({ fitMode, setFitMode, degree, setDegree }) => (
@@ -34,9 +33,23 @@ const LineModeSettings = ({ fitMode, setFitMode, degree, setDegree }) => (
       {ALGO_DESCRIPTIONS[fitMode]}
     </p>
 
-    {fitMode === 'poly' && (
-      <div className="flex items-center gap-4">
-        <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-16 uppercase tracking-wider">
+    <Collapsible open={fitMode === 'cosine'}>
+      <p className="text-[10px] text-[var(--text-muted)] pt-0.5">
+        More info:{' '}
+        <a
+          href="https://iquilezles.org/articles/palettes/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:text-[var(--text)] transition-colors"
+        >
+          iquilezles.org/articles/palettes
+        </a>
+      </p>
+    </Collapsible>
+
+    <Collapsible open={fitMode === 'poly'}>
+      <div className="flex items-center gap-4 pt-0.5">
+        <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 uppercase tracking-wider">
           Degree
         </label>
         <input
@@ -50,7 +63,7 @@ const LineModeSettings = ({ fitMode, setFitMode, degree, setDegree }) => (
           {degree}
         </span>
       </div>
-    )}
+    </Collapsible>
   </div>
 );
 
