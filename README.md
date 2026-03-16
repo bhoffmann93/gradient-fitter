@@ -4,7 +4,7 @@ A browser tool for extracting color gradients from images and fitting them into 
 
 **Live demo:** https://www.bernhard-hoffmann.com/gradient-fitter/
 
-![GLSL Gradient Fitter](screenshot.png)
+![Gradient Fitter](screenshot.png)
 
 ---
 
@@ -24,7 +24,7 @@ Two modes:
 - **Polynomial** — least-squares fitting, can overshoot
 - **Cosine** — smooth, option to loop perfectly ([Inigo Quilez Cosine Palette](https://iquilezles.org/articles/palettes/)).
 
-Both modes support **interpolation in Linear RGB** for Linear and Catmull modes — avoids the dark muddy midpoints you get when interpolating in sRGB space. The GLSL output includes the sRGB conversion. 
+Both modes support **interpolation in Linear RGB** for Linear and Catmull modes — avoids the dark muddy midpoints you get when interpolating in sRGB space. The GLSL output includes the sRGB conversion.
 See: [What every coder should know about gamma](https://blog.johnnovak.net/2016/09/21/what-every-coder-should-know-about-gamma/).
 
 Dominance weighting available for catmull-rom and linear which places the stops in relation to the dominance of colors extracted.

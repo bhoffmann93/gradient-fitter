@@ -64,18 +64,23 @@ const App = () => {
     const ctx = canvasRef.current.getContext('2d');
     const destImageData = ctx.createImageData(w, h);
     const dest = destImageData.data;
-    const min = minLevel / 255, max = maxLevel / 255;
+    const min = minLevel / 255,
+      max = maxLevel / 255;
     const range = max - min;
     for (let i = 0; i < src.length; i += 4) {
       let r = (src[i] / 255 - 0.5) * contrast + 0.5;
       let g = (src[i + 1] / 255 - 0.5) * contrast + 0.5;
       let b = (src[i + 2] / 255 - 0.5) * contrast + 0.5;
       if (range > 0.001) {
-        r = (r - min) / range; g = (g - min) / range; b = (b - min) / range;
+        r = (r - min) / range;
+        g = (g - min) / range;
+        b = (b - min) / range;
       } else {
-        r = r >= min ? 1 : 0; g = g >= min ? 1 : 0; b = b >= min ? 1 : 0;
+        r = r >= min ? 1 : 0;
+        g = g >= min ? 1 : 0;
+        b = b >= min ? 1 : 0;
       }
-      dest[i]     = Math.max(0, Math.min(1, r)) * 255;
+      dest[i] = Math.max(0, Math.min(1, r)) * 255;
       dest[i + 1] = Math.max(0, Math.min(1, g)) * 255;
       dest[i + 2] = Math.max(0, Math.min(1, b)) * 255;
       dest[i + 3] = src[i + 3];
@@ -94,10 +99,13 @@ const App = () => {
     setTimeout(() => {
       try {
         const ctx = canvasRef.current.getContext('2d');
-        const w = canvasRef.current.width, h = canvasRef.current.height;
+        const w = canvasRef.current.width,
+          h = canvasRef.current.height;
         const data = ctx.getImageData(0, 0, w, h).data;
-        const x1 = p1.x * w, y1 = p1.y * h;
-        const x2 = p2.x * w, y2 = p2.y * h;
+        const x1 = p1.x * w,
+          y1 = p1.y * h;
+        const x2 = p2.x * w,
+          y2 = p2.y * h;
         const numSteps = Math.max(2, Math.ceil(Math.hypot(x2 - x1, y2 - y1)));
         const samples = [];
         for (let i = 0; i < numSteps; i++) {
@@ -131,7 +139,9 @@ const App = () => {
     const fittingColors = useLinearLight ? colors.map(linearize) : colors;
     const result = FIT_MODES[paletteFitMode].fit(fittingColors, { degree, lockFrequency, tValues });
     setCoefficients(result);
-    setGlslCode(FIT_MODES[paletteFitMode].buildGLSL(result, { linearLight: useLinearLight }) + '\n\n' + buildColorGLSL(colors));
+    setGlslCode(
+      FIT_MODES[paletteFitMode].buildGLSL(result, { linearLight: useLinearLight }) + '\n\n' + buildColorGLSL(colors),
+    );
     drawGraph(graphRef.current, colors, result, paletteFitMode, useLinearLight);
     renderGradientPreview(shaderCanvasRef.current, result, paletteFitMode, useLinearLight);
     setPaletteDrawData({ colors, result, mode: paletteFitMode, linearLight: useLinearLight });
@@ -142,14 +152,17 @@ const App = () => {
     setStatus('processing');
     setError(null);
     try {
-      const imageData = canvasRef.current.getContext('2d')
+      const imageData = canvasRef.current
+        .getContext('2d')
         .getImageData(0, 0, canvasRef.current.width, canvasRef.current.height);
       let colors;
       if (paletteMethod === 'dominant') {
         colors = await extractDominant(imageData, colorCount);
       } else if (paletteMethod === 'api') {
         const { colors: apiColors, seeds } = await generateColormindPalette(imageData, {
-          model: apiModel, seedCount: apiSeedCount, cachedSeeds: apiSeedsRef.current,
+          model: apiModel,
+          seedCount: apiSeedCount,
+          cachedSeeds: apiSeedsRef.current,
         });
         apiSeedsRef.current = seeds;
         colors = apiColors;
@@ -179,7 +192,8 @@ const App = () => {
   const handleMouseDown = (e) => {
     if (!uiCanvasRef.current || !imageSrc || appMode !== 'line') return;
     const rect = uiCanvasRef.current.getBoundingClientRect();
-    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    const mx = e.clientX - rect.left,
+      my = e.clientY - rect.top;
     if (Math.hypot(mx - p1.x * rect.width, my - p1.y * rect.height) < POINT_HIT_RADIUS) {
       setActivePoint('p1');
     } else if (Math.hypot(mx - p2.x * rect.width, my - p2.y * rect.height) < POINT_HIT_RADIUS) {
@@ -197,7 +211,42 @@ const App = () => {
   };
 
   const handleMouseUp = () => {
-    if (activePoint) { setActivePoint(null); performFitting(); }
+    if (activePoint) {
+      setActivePoint(null);
+      performFitting();
+    }
+  };
+
+  const TOUCH_HIT_RADIUS = 40;
+
+  const handleTouchStart = (e) => {
+    if (!uiCanvasRef.current || !imageSrc || appMode !== 'line') return;
+    const touch = e.touches[0];
+    const rect = uiCanvasRef.current.getBoundingClientRect();
+    const mx = touch.clientX - rect.left,
+      my = touch.clientY - rect.top;
+    if (Math.hypot(mx - p1.x * rect.width, my - p1.y * rect.height) < TOUCH_HIT_RADIUS) {
+      setActivePoint('p1');
+    } else if (Math.hypot(mx - p2.x * rect.width, my - p2.y * rect.height) < TOUCH_HIT_RADIUS) {
+      setActivePoint('p2');
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (!activePoint || !uiCanvasRef.current) return;
+    const touch = e.touches[0];
+    const rect = uiCanvasRef.current.getBoundingClientRect();
+    const x = Math.max(0, Math.min(1, (touch.clientX - rect.left) / rect.width));
+    const y = Math.max(0, Math.min(1, (touch.clientY - rect.top) / rect.height));
+    if (activePoint === 'p1') setP1({ x, y });
+    else setP2({ x, y });
+  };
+
+  const handleTouchEnd = () => {
+    if (activePoint) {
+      setActivePoint(null);
+      performFitting();
+    }
   };
 
   const handleImageUpload = (e) => {
@@ -214,10 +263,17 @@ const App = () => {
     const img = new Image();
     img.src = imageSrc;
     img.onload = () => {
-      let w = img.width, h = img.height;
-      if (w > h && w > IMAGE_MAX_SIZE) { h *= IMAGE_MAX_SIZE / w; w = IMAGE_MAX_SIZE; }
-      else if (h > IMAGE_MAX_SIZE) { w *= IMAGE_MAX_SIZE / h; h = IMAGE_MAX_SIZE; }
-      w = Math.round(w); h = Math.round(h);
+      let w = img.width,
+        h = img.height;
+      if (w > h && w > IMAGE_MAX_SIZE) {
+        h *= IMAGE_MAX_SIZE / w;
+        w = IMAGE_MAX_SIZE;
+      } else if (h > IMAGE_MAX_SIZE) {
+        w *= IMAGE_MAX_SIZE / h;
+        h = IMAGE_MAX_SIZE;
+      }
+      w = Math.round(w);
+      h = Math.round(h);
       const dpr = window.devicePixelRatio || 1;
       canvasRef.current.width = w;
       canvasRef.current.height = h;
@@ -251,13 +307,20 @@ const App = () => {
   React.useEffect(() => {
     if (!paletteDrawData) return;
     drawSwatches(paletteSwatchRef.current, paletteDrawData.colors);
-    drawPaletteGradient(paletteGradientRef.current, paletteDrawData.result, paletteDrawData.mode, paletteDrawData.linearLight);
+    drawPaletteGradient(
+      paletteGradientRef.current,
+      paletteDrawData.result,
+      paletteDrawData.mode,
+      paletteDrawData.linearLight,
+    );
   }, [paletteDrawData]);
 
   React.useEffect(() => {
     if (paletteMethod !== 'api') return;
     fetchColormindModels()
-      .then((models) => { if (models.length) setApiModels(models); })
+      .then((models) => {
+        if (models.length) setApiModels(models);
+      })
       .catch(() => {});
   }, [paletteMethod]);
 
@@ -277,14 +340,16 @@ const App = () => {
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] p-4 md:p-5">
       <div className="max-w-[1500px] mx-auto">
-
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex bg-[var(--surface-muted)] p-0.5 rounded-sm border border-[var(--border)]">
-            {[['line', 'Line Sample'], ['palette', 'Palette Extract']].map(([id, label]) => (
+        <div className="flex items-center mb-4 gap-3">
+          <div className="flex bg-[var(--surface-muted)] p-0.5 rounded-sm border border-[var(--border)] shrink-0">
+            {[
+              ['line', 'Line Sample'],
+              ['palette', 'Palette Extract'],
+            ].map(([id, label]) => (
               <button
                 key={id}
                 onClick={() => setAppMode(id)}
-                className={`px-4 py-1.5 text-[10px] rounded-sm font-semibold tracking-widest uppercase transition-all ${
+                className={`px-2 sm:px-4 py-1.5 text-[10px] rounded-sm font-semibold tracking-widest uppercase transition-all ${
                   appMode === id
                     ? 'bg-[var(--surface)] text-[var(--accent)]'
                     : 'text-[var(--text-muted)] hover:text-[var(--text)]'
@@ -295,7 +360,7 @@ const App = () => {
             ))}
           </div>
           <span className="text-[11px] font-semibold tracking-widest text-[var(--text-muted)] uppercase select-none">
-            GLSL Gradient Fitter
+            Gradient Fitter
           </span>
         </div>
 
@@ -310,6 +375,9 @@ const App = () => {
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
             />
             <GraphPanel graphRef={graphRef} shaderCanvasRef={shaderCanvasRef} />
           </div>
@@ -319,14 +387,14 @@ const App = () => {
               <>
                 <div className="bg-[var(--surface)] p-5 space-y-5">
                   <ImageAdjustPanel
-                    contrast={contrast} setContrast={setContrast}
-                    minLevel={minLevel} setMinLevel={setMinLevel}
-                    maxLevel={maxLevel} setMaxLevel={setMaxLevel}
+                    contrast={contrast}
+                    setContrast={setContrast}
+                    minLevel={minLevel}
+                    setMinLevel={setMinLevel}
+                    maxLevel={maxLevel}
+                    setMaxLevel={setMaxLevel}
                   />
-                  <LineModeSettings
-                    fitMode={fitMode} setFitMode={setFitMode}
-                    degree={degree} setDegree={setDegree}
-                  />
+                  <LineModeSettings fitMode={fitMode} setFitMode={setFitMode} degree={degree} setDegree={setDegree} />
                 </div>
                 <div className="border-t border-[var(--border)]">
                   <CodePanel glslCode={glslCode} status={status} error={error} />
@@ -335,7 +403,10 @@ const App = () => {
             ) : (
               <>
                 <div className="flex bg-[var(--surface-muted)] border-b border-[var(--border)]">
-                  {[['settings', 'Settings'], ['code', 'Code']].map(([id, label]) => (
+                  {[
+                    ['settings', 'Settings'],
+                    ['code', 'Code'],
+                  ].map(([id, label]) => (
                     <button
                       key={id}
                       onClick={() => setRightTab(id)}
@@ -354,21 +425,33 @@ const App = () => {
                     <div className="bg-[var(--surface)] p-5">
                       <div className="space-y-5">
                         <ImageAdjustPanel
-                          contrast={contrast} setContrast={setContrast}
-                          minLevel={minLevel} setMinLevel={setMinLevel}
-                          maxLevel={maxLevel} setMaxLevel={setMaxLevel}
+                          contrast={contrast}
+                          setContrast={setContrast}
+                          minLevel={minLevel}
+                          setMinLevel={setMinLevel}
+                          maxLevel={maxLevel}
+                          setMaxLevel={setMaxLevel}
                         />
                         <PaletteModeSettings
-                          paletteMethod={paletteMethod} setPaletteMethod={setPaletteMethod}
-                          paletteFitMode={paletteFitMode} setPaletteFitMode={setPaletteFitMode}
-                          colorCount={colorCount} setColorCount={setColorCount}
-                          lockFrequency={lockFrequency} setLockFrequency={setLockFrequency}
-                          linearLight={linearLight} setLinearLight={setLinearLight}
-                          weightDominance={weightDominance} setWeightDominance={setWeightDominance}
-                          degree={degree} setDegree={setDegree}
-                          apiModel={apiModel} setApiModel={setApiModel}
+                          paletteMethod={paletteMethod}
+                          setPaletteMethod={setPaletteMethod}
+                          paletteFitMode={paletteFitMode}
+                          setPaletteFitMode={setPaletteFitMode}
+                          colorCount={colorCount}
+                          setColorCount={setColorCount}
+                          lockFrequency={lockFrequency}
+                          setLockFrequency={setLockFrequency}
+                          linearLight={linearLight}
+                          setLinearLight={setLinearLight}
+                          weightDominance={weightDominance}
+                          setWeightDominance={setWeightDominance}
+                          degree={degree}
+                          setDegree={setDegree}
+                          apiModel={apiModel}
+                          setApiModel={setApiModel}
                           apiModels={apiModels}
-                          apiSeedCount={apiSeedCount} setApiSeedCount={setApiSeedCount}
+                          apiSeedCount={apiSeedCount}
+                          setApiSeedCount={setApiSeedCount}
                           extractedColors={extractedColors}
                           paletteSwatchRef={paletteSwatchRef}
                           paletteGradientRef={paletteGradientRef}
