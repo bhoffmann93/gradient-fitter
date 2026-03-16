@@ -2,15 +2,18 @@
 
 A browser tool for extracting color gradients from images and fitting them to a mathematical function — output as GLSL, HLSL, JavaScript, or TypeScript, ready to drop into your shader or code.
 
-**Live demo:** https://www.bernhard-hoffmann.com/gradient-fitter/
-
 ![Gradient Fitter](screenshot.png)
 
----
+**Live Version:** https://www.bernhard-hoffmann.com/gradient-fitter/
+
+## Examples
+
+- **GLSL** — [ShaderToy](https://www.shadertoy.com/view/sf23zh)
+- **JS** — [p5.js Web Editor](https://editor.p5js.org/bhoffmann93/sketches/KP6EBi5KO)
 
 ## Description
 
-Upload an image, draw a sample line or extract a palette, and the tool fits the colors to a mathematical function. The output is a `palette(float t)` function — available as GLSL, HLSL, JavaScript, or TypeScript.
+Upload an image, draw a sample line or extract a palette, and the tool fits the colors to a mathematical function. The output is a `palette(float t)` function, which returns normalized (0.0-1.0) RGB Values for t (0.0-1.0). Available as GLSL, HLSL, JavaScript, or TypeScript.
 
 Two modes:
 
@@ -37,13 +40,6 @@ See: [What every coder should know about gamma](https://blog.johnnovak.net/2016/
 **Linear** — direct linear interpolation between color stops. With dominance weighting the stops are spaced by pixel area rather than uniformly.
 
 **Catmull-Rom** — smooth cubic spline through the extracted color stops using the standard Catmull-Rom basis. With dominance weighting the stop spacing is area-weighted.
-
----
-
-## Examples
-
-- **GLSL** — [ShaderToy](https://www.shadertoy.com/view/sf23zh)
-- **JS** — [p5.js Web Editor](https://editor.p5js.org/bhoffmann93/sketches/KP6EBi5KO)
 
 ---
 
