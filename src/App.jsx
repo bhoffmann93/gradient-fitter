@@ -55,6 +55,8 @@ const App = () => {
   const canvasRef = React.useRef(null);
   const uiCanvasRef = React.useRef(null);
   const graphRef = React.useRef(null);
+  const lastSamplesRef = React.useRef(null);
+  const redrawGraphRef = React.useRef(null);
   const shaderCanvasRef = React.useRef(null);
   const apiSeedsRef = React.useRef(null);
   const extractedColorsRef = React.useRef([]);
@@ -121,6 +123,7 @@ const App = () => {
           }
         }
         if (samples.length < 2) throw new Error('Line too short');
+        lastSamplesRef.current = samples;
         const result = FIT_MODES[fitMode].fit(samples, { degree });
         setCoefficients(result);
         setGlslCode(buildCode(fitMode, result, { linearLight }, language));
@@ -401,6 +404,27 @@ const App = () => {
     }
   }, [appMode]);
 
+  // Keep redrawGraphRef current so the ResizeObserver never has stale closure values
+  React.useEffect(() => {
+    redrawGraphRef.current = () => {
+      if (!graphRef.current) return;
+      if (appMode === 'line' && lastSamplesRef.current && coefficients) {
+        drawGraph(graphRef.current, lastSamplesRef.current, coefficients, fitMode, linearLight);
+      } else if (appMode === 'palette' && extractedColorsRef.current.length >= 2 && coefficients) {
+        const useLL = linearLight && LINEAR_LIGHT_MODES.includes(paletteFitMode);
+        drawGraph(graphRef.current, extractedColorsRef.current, coefficients, paletteFitMode, useLL);
+      }
+    };
+  }, [appMode, coefficients, fitMode, paletteFitMode, linearLight]);
+
+  // Redraw graph whenever the canvas changes size
+  React.useEffect(() => {
+    if (!graphRef.current) return;
+    const ro = new ResizeObserver(() => redrawGraphRef.current?.());
+    ro.observe(graphRef.current);
+    return () => ro.disconnect();
+  }, []);
+
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] p-4 md:p-5">
       <div className="max-w-[1500px] mx-auto">
@@ -476,8 +500,10 @@ const App = () => {
                   />
                   <LineModeSettings fitMode={fitMode} setFitMode={setFitMode} degree={degree} setDegree={setDegree} />
                 </div>
-                <div className="border-t border-[var(--border)] flex-1 flex flex-col">
-                  <CodePanel glslCode={glslCode} status={status} error={error} language={language} setLanguage={setLanguage} fitMode={fitMode} className="flex-1" />
+                <div className="border-t border-[var(--border)] flex-1 relative min-h-[420px]">
+                  <div className="absolute inset-0">
+                    <CodePanel glslCode={glslCode} status={status} error={error} language={language} setLanguage={setLanguage} fitMode={fitMode} className="h-full" />
+                  </div>
                 </div>
               </>
             ) : (
