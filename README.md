@@ -2,7 +2,7 @@
 
 A browser tool for extracting color gradients from images and fitting them to a mathematical function — output as GLSL, HLSL, JavaScript, or TypeScript, ready to drop into your shader or code.
 
-![Gradient Fitter](screenshot.png)
+![Gradient Fitter](screenshot.png?v=2)
 
 **Live Version:** https://www.bernhard-hoffmann.com/gradient-fitter/
 
