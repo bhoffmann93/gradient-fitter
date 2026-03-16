@@ -90,7 +90,7 @@ export const buildLinearJS = ({ colors, tValues }, { linearLight = false } = {},
   const lines = [
     buildHelpers(ts),
     ``,
-    `// Returns [r, g, b] in [0, 1] — normalized ${colorSpace}`,
+    `// Returns [r, g, b] in [0, 1]`,
     `function linearPalette(${tParam})${retType} {`,
   ];
 
@@ -156,7 +156,7 @@ export const buildCatmullJS = ({ colors, tValues }, { linearLight = false } = {}
     `  return [0, 1, 2].map(k => 0.5 * (b1*p0[k] + b2*p1[k] + b3*p2[k] + b4*p3[k]));`,
     `}`,
     ``,
-    `// Returns [r, g, b] in [0, 1] — normalized ${colorSpace}`,
+    `// Returns [r, g, b] in [0, 1]`,
     `function catmullPalette(${tParam})${retType} {`,
   ];
 
@@ -208,36 +208,23 @@ export const buildColorCode = (colors, lang) => {
   const n = colors.length;
 
   if (lang === 'js' || lang === 'ts') {
-    const typeAnn = lang === 'ts' ? ': [number, number, number]' : '';
     const arrType = lang === 'ts' ? ': [number, number, number][]' : '';
-    let code = `// Extracted colors – normalized sRGB [0, 1] (use * 255 for CSS rgb()), luminance sorted\n`;
-    colors.forEach((c, i) => {
-      code += `const color${i + 1}${typeAnn} = [${f(c.r)}, ${f(c.g)}, ${f(c.b)}];\n`;
-    });
-    code += `\n// Same colors as an array (for indexed access)\nconst extractedColors${arrType} = [\n`;
+    let code = `// normalized sRGB [0, 1], luminance sorted\nconst extractedColors${arrType} = [\n`;
     code += colors.map((c, i) => `  [${f(c.r)}, ${f(c.g)}, ${f(c.b)}]${i < n - 1 ? ',' : ''}`).join('\n');
     code += `\n];`;
     return code;
   }
 
   if (lang === 'hlsl') {
-    let code = `// Extracted colors – sRGB, luminance sorted\n`;
-    colors.forEach((c, i) => {
-      code += `float3 color${i + 1} = float3(${f(c.r)}, ${f(c.g)}, ${f(c.b)});\n`;
-    });
-    code += `\n// Same colors as an array (for indexed access)\nfloat3 extractedColors[${n}] = {\n`;
-    code += colors.map((c, i) => `    float3(${f(c.r)}, ${f(c.g)}, ${f(c.b)})${i < n - 1 ? ',' : ''}`).join('\n');
+    let code = `// sRGB, luminance sorted\nfloat3 extractedColors[${n}] = {\n`;
+    code += colors.map((c, i) => `  float3(${f(c.r)}, ${f(c.g)}, ${f(c.b)})${i < n - 1 ? ',' : ''}`).join('\n');
     code += `\n};`;
     return code;
   }
 
   // GLSL
-  let code = `// Extracted colors – sRGB, luminance sorted\n`;
-  colors.forEach((c, i) => {
-    code += `vec3 color${i + 1} = vec3(${f(c.r)}, ${f(c.g)}, ${f(c.b)});\n`;
-  });
-  code += `\n// Same colors as an array (for indexed access)\nvec3 extractedColors[${n}] = vec3[](\n`;
-  code += colors.map((c, i) => `    vec3(${f(c.r)}, ${f(c.g)}, ${f(c.b)})${i < n - 1 ? ',' : ''}`).join('\n');
+  let code = `// sRGB, luminance sorted\nvec3 extractedColors[${n}] = vec3[](\n`;
+  code += colors.map((c, i) => `  vec3(${f(c.r)}, ${f(c.g)}, ${f(c.b)})${i < n - 1 ? ',' : ''}`).join('\n');
   code += `\n);`;
   return code;
 };

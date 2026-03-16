@@ -40,9 +40,16 @@ See: [What every coder should know about gamma](https://blog.johnnovak.net/2016/
 
 ---
 
+## Examples
+
+- **GLSL** — [ShaderToy](https://www.shadertoy.com/view/sf23zh)
+- **JS** — [p5.js Web Editor](https://editor.p5js.org/bhoffmann93/sketches/KP6EBi5KO)
+
+---
+
 ## About
 
-This project was built with [Claude Code](https://claude.ai/code)'s capabilities.
+This project was built with the help of [Claude Code](https://claude.ai/code).
 
 ---
 

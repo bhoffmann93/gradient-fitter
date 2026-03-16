@@ -427,7 +427,7 @@ const App = () => {
                   <LineModeSettings fitMode={fitMode} setFitMode={setFitMode} degree={degree} setDegree={setDegree} />
                 </div>
                 <div className="border-t border-[var(--border)]">
-                  <CodePanel glslCode={glslCode} status={status} error={error} language={language} setLanguage={setLanguage} />
+                  <CodePanel glslCode={glslCode} status={status} error={error} language={language} setLanguage={setLanguage} fitMode={fitMode} />
                 </div>
               </>
             ) : (
@@ -493,7 +493,7 @@ const App = () => {
                     </div>
                   </div>
                   <div className={`absolute inset-0 ${rightTab !== 'code' ? 'invisible pointer-events-none' : ''}`}>
-                    <CodePanel glslCode={glslCode} status={status} error={error} language={language} setLanguage={setLanguage} className="h-full" />
+                    <CodePanel glslCode={glslCode} status={status} error={error} language={language} setLanguage={setLanguage} fitMode={paletteFitMode} className="h-full" />
                   </div>
                 </div>
               </>

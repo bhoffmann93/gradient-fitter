@@ -2,7 +2,27 @@ import React from 'react';
 import { RefreshCw, AlertCircle } from 'lucide-react';
 import { LANGS } from '../fit/index.js';
 
-const CodePanel = ({ glslCode, status, error, language, setLanguage, className = '' }) => (
+const EXAMPLE_LINKS = {
+  glsl: { label: 'ShaderToy example', url: 'https://www.shadertoy.com/view/sf23zh' },
+  hlsl: { label: 'ShaderToy example', url: 'https://www.shadertoy.com/view/sf23zh' },
+  js:   {
+    default: { label: 'p5.js example', url: 'https://editor.p5js.org/bhoffmann93/sketches/KP6EBi5KO' },
+    catmull: { label: 'p5.js example', url: 'https://editor.p5js.org/bhoffmann93/sketches/-v3Wm2rqn' },
+  },
+  ts:   {
+    default: { label: 'p5.js example', url: 'https://editor.p5js.org/bhoffmann93/sketches/KP6EBi5KO' },
+    catmull: { label: 'p5.js example', url: 'https://editor.p5js.org/bhoffmann93/sketches/-v3Wm2rqn' },
+  },
+};
+
+const getExampleLink = (language, fitMode) => {
+  const entry = EXAMPLE_LINKS[language];
+  if (!entry) return null;
+  if (entry.default) return entry[fitMode] || entry.default;
+  return entry;
+};
+
+const CodePanel = ({ glslCode, status, error, language, setLanguage, fitMode, className = '' }) => (
   <div className={`bg-[var(--code-bg)] text-[var(--code-text)] p-5 flex flex-col min-h-[480px] ${className}`}>
     <div className="flex justify-between items-center mb-4 gap-3">
       <div className="flex bg-[var(--code-border)] rounded-sm p-0.5 shrink-0">
@@ -41,8 +61,24 @@ const CodePanel = ({ glslCode, status, error, language, setLanguage, className =
       {glslCode || '// Upload an image and select a mode...'}
     </div>
 
+    <div className="mt-3 flex items-center justify-between">
+      {(() => {
+        const link = getExampleLink(language, fitMode);
+        return link ? (
+          <a
+            href={link.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[10px] text-[var(--accent)] opacity-80 hover:opacity-100 transition-opacity tracking-wider"
+          >
+            {link.label} ↗
+          </a>
+        ) : null;
+      })()}
+    </div>
+
     {error && (
-      <div className="mt-4 p-3 bg-red-900/20 border border-red-900/40 text-red-300 text-xs rounded-sm flex items-center gap-2">
+      <div className="mt-2 p-3 bg-red-900/20 border border-red-900/40 text-red-300 text-xs rounded-sm flex items-center gap-2">
         <AlertCircle className="w-4 h-4" /> {error}
       </div>
     )}
