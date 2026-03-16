@@ -3,6 +3,18 @@ import { fmtGlsl as fmt } from './glslUtils.js';
 const fmtArr = (vals) => `[${vals.map(fmt).join(', ')}]`;
 const clamp01 = (expr) => `Math.min(1, Math.max(0, ${expr}))`;
 
+const buildHelpers = (ts) => {
+  const rgbParam = ts ? 'rgb: [number, number, number]' : 'rgb';
+  return [
+    `function to255(${rgbParam})${ts ? ': [number, number, number]' : ''} {`,
+    `  return rgb.map(v => Math.round(Math.min(1, Math.max(0, v)) * 255))${ts ? ' as [number, number, number]' : ''};`,
+    `}`,
+    `function toCSS(${rgbParam})${ts ? ': string' : ''} {`,
+    `  return \`rgb(\${rgb.map(v => Math.round(Math.min(1, Math.max(0, v)) * 255)).join(', ')})\`;`,
+    `}`,
+  ].join('\n');
+};
+
 // ─── HLSL: transform GLSL output ─────────────────────────────────────────────
 
 export const glslToHLSL = (code) =>
@@ -28,8 +40,10 @@ export const buildPolyJS = (coeffs, ts = false) => {
     fmtArr([coeffs.r[i], coeffs.g[i], coeffs.b[i]])
   );
   return [
-    `// Returns [r, g, b] in [0, 1] — normalized sRGB (use * 255 for CSS rgb())`,
-    `const polyPalette = (${tParam})${retType} => {`,
+    buildHelpers(ts),
+    ``,
+    `// Returns [r, g, b] in [0, 1] — normalized sRGB`,
+    `function polyPalette(${tParam})${retType} {`,
     `  const coeffs${typeAnn} = [`,
     ...rows.map((r, i) => `    ${r}${i < rows.length - 1 ? ',' : ''}`),
     `  ];`,
@@ -38,7 +52,7 @@ export const buildPolyJS = (coeffs, ts = false) => {
     `    for (let i = 0; i < coeffs.length; i++) v += coeffs[i][k] * Math.pow(t, i);`,
     `    return ${clamp01('v')};`,
     `  })${cast};`,
-    `};`,
+    `}`,
   ].join('\n');
 };
 
@@ -49,8 +63,10 @@ export const buildCosineJS = (coeffs, ts = false) => {
   const cast = ts ? ' as [number, number, number]' : '';
   const tParam = ts ? 't: number' : 't';
   return [
-    `// Returns [r, g, b] in [0, 1] — normalized sRGB (use * 255 for CSS rgb())`,
-    `const cosPalette = (${tParam})${retType} => {`,
+    buildHelpers(ts),
+    ``,
+    `// Returns [r, g, b] in [0, 1] — normalized sRGB`,
+    `function cosPalette(${tParam})${retType} {`,
     `  const offset    = ${fmtArr([coeffs.r.a, coeffs.g.a, coeffs.b.a])};`,
     `  const amplitude = ${fmtArr([coeffs.r.b, coeffs.g.b, coeffs.b.b])};`,
     `  const frequency = ${fmtArr([coeffs.r.c, coeffs.g.c, coeffs.b.c])};`,
@@ -58,7 +74,7 @@ export const buildCosineJS = (coeffs, ts = false) => {
     `  return [0, 1, 2].map(k =>`,
     `    offset[k] + amplitude[k] * Math.cos(6.28318 * (frequency[k] * t + phase[k]))`,
     `  )${cast};`,
-    `};`,
+    `}`,
   ].join('\n');
 };
 
@@ -72,8 +88,10 @@ export const buildLinearJS = ({ colors, tValues }, { linearLight = false } = {},
   const tParam = ts ? 't: number' : 't';
   const colorSpace = linearLight ? 'Linear RGB' : 'sRGB';
   const lines = [
-    `// Returns [r, g, b] in [0, 1] — normalized ${colorSpace} (use * 255 for CSS rgb())`,
-    `const linearPalette = (${tParam})${retType} => {`,
+    buildHelpers(ts),
+    ``,
+    `// Returns [r, g, b] in [0, 1] — normalized ${colorSpace}`,
+    `function linearPalette(${tParam})${retType} {`,
   ];
 
   if (isUniform) {
@@ -110,7 +128,7 @@ export const buildLinearJS = ({ colors, tValues }, { linearLight = false } = {},
       lines.push(`  return rgb${cast};`);
     }
   }
-  lines.push(`};`);
+  lines.push(`}`);
   return lines.join('\n');
 };
 
@@ -129,15 +147,17 @@ export const buildCatmullJS = ({ colors, tValues }, { linearLight = false } = {}
   const colorSpace = linearLight ? 'Linear RGB' : 'sRGB';
 
   const lines = [
-    `const catmullRom = (${crParam})${crRet} => {`,
+    buildHelpers(ts),
+    ``,
+    `function catmullRom(${crParam})${crRet} {`,
     `  const t2 = t * t, t3 = t2 * t;`,
     `  const b1 = -t3 + 2*t2 - t,  b2 = 3*t3 - 5*t2 + 2;`,
     `  const b3 = -3*t3 + 4*t2 + t, b4 = t3 - t2;`,
     `  return [0, 1, 2].map(k => 0.5 * (b1*p0[k] + b2*p1[k] + b3*p2[k] + b4*p3[k]));`,
-    `};`,
+    `}`,
     ``,
-    `// Returns [r, g, b] in [0, 1] — normalized ${colorSpace} (use * 255 for CSS rgb())`,
-    `const catmullPalette = (${tParam})${retType} => {`,
+    `// Returns [r, g, b] in [0, 1] — normalized ${colorSpace}`,
+    `function catmullPalette(${tParam})${retType} {`,
   ];
 
   if (isUniform) {
@@ -177,7 +197,7 @@ export const buildCatmullJS = ({ colors, tValues }, { linearLight = false } = {}
   } else {
     lines.push(`  return catmullRom(p0, p1, p2, p3, localT)${cast};`);
   }
-  lines.push(`};`);
+  lines.push(`}`);
   return lines.join('\n');
 };
 
