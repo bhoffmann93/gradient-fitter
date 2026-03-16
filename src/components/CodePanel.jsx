@@ -19,7 +19,7 @@ const CodePanel = ({ glslCode, status, error }) => (
       )}
     </div>
 
-    <div className="flex-1 font-mono text-xs leading-relaxed overflow-x-auto whitespace-pre bg-[var(--code-surface)] p-4 border border-[var(--code-border)] w-full min-w-0">
+    <div className="flex-1 font-mono text-xs leading-relaxed overflow-auto whitespace-pre bg-[var(--code-surface)] p-4 border border-[var(--code-border)] w-full min-w-0">
       {glslCode || '// Upload an image and select a mode...'}
     </div>
 

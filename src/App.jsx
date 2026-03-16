@@ -274,11 +274,10 @@ const App = () => {
       }
       w = Math.round(w);
       h = Math.round(h);
-      const dpr = window.devicePixelRatio || 1;
       canvasRef.current.width = w;
       canvasRef.current.height = h;
-      uiCanvasRef.current.width = w * dpr;
-      uiCanvasRef.current.height = h * dpr;
+      uiCanvasRef.current.width = w;
+      uiCanvasRef.current.height = h;
       const ctx = canvasRef.current.getContext('2d', { willReadFrequently: true });
       ctx.drawImage(img, 0, 0, w, h);
       originalDataRef.current = ctx.getImageData(0, 0, w, h);
@@ -296,7 +295,10 @@ const App = () => {
   }, [degree, fitMode]);
 
   React.useEffect(() => {
-    if (imageSrc && appMode === 'palette') performPaletteFit();
+    if (imageSrc && appMode === 'palette') {
+      apiSeedsRef.current = null;
+      performPaletteFit();
+    }
   }, [colorCount, paletteMethod, apiModel, apiSeedCount]);
 
   React.useEffect(() => {

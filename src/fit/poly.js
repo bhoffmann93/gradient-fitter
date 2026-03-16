@@ -17,7 +17,7 @@ const evaluate = (coeffs, t) => {
 
 const buildGLSL = (coeffs) => {
   const deg = coeffs.r.length - 1;
-  let code = `vec3 gradient(float t) {\n`;
+  let code = `vec3 polyPalette(float t) {\n`;
   code += `    vec3 c0 = vec3(${fmtGlsl(coeffs.r[0])}, ${fmtGlsl(coeffs.g[0])}, ${fmtGlsl(coeffs.b[0])});\n`;
   for (let i = 1; i <= deg; i++) {
     code += `    vec3 c${i} = vec3(${fmtGlsl(coeffs.r[i])}, ${fmtGlsl(coeffs.g[i])}, ${fmtGlsl(coeffs.b[i])});\n`;

@@ -10,7 +10,7 @@ const evaluate = (coeffs, t) => {
 };
 
 const buildGLSL = (coeffs) => {
-  let code = `vec3 palette(float t) {\n`;
+  let code = `vec3 cosPalette(float t) {\n`;
   code += `    vec3 a = vec3(${fmtGlsl(coeffs.r.a)}, ${fmtGlsl(coeffs.g.a)}, ${fmtGlsl(coeffs.b.a)});\n`;
   code += `    vec3 b = vec3(${fmtGlsl(coeffs.r.b)}, ${fmtGlsl(coeffs.g.b)}, ${fmtGlsl(coeffs.b.b)});\n`;
   code += `    vec3 c = vec3(${fmtGlsl(coeffs.r.c)}, ${fmtGlsl(coeffs.g.c)}, ${fmtGlsl(coeffs.b.c)});\n`;
