@@ -1,6 +1,6 @@
 import React from 'react';
 import { DEFAULTS, IMAGE_MAX_SIZE, POINT_HIT_RADIUS } from './config.js';
-import { FIT_MODES, buildColorGLSL, linearize, LINEAR_LIGHT_MODES } from './fit/index.js';
+import { FIT_MODES, buildCode, buildColorCode, linearize, LINEAR_LIGHT_MODES } from './fit/index.js';
 import { computeWeightedTValues } from './math/cosine.js';
 import { extractDominant, extractGenerative } from './palette/extract.js';
 import { generateColormindPalette, fetchColormindModels } from './palette/colormind.js';
@@ -39,6 +39,7 @@ const App = () => {
   const [minLevel, setMinLevel] = React.useState(DEFAULTS.minLevel);
   const [maxLevel, setMaxLevel] = React.useState(DEFAULTS.maxLevel);
 
+  const [language, setLanguage] = React.useState('glsl');
   const [coefficients, setCoefficients] = React.useState(null);
   const [glslCode, setGlslCode] = React.useState('');
   const [error, setError] = React.useState(null);
@@ -120,7 +121,7 @@ const App = () => {
         if (samples.length < 2) throw new Error('Line too short');
         const result = FIT_MODES[fitMode].fit(samples, { degree });
         setCoefficients(result);
-        setGlslCode(FIT_MODES[fitMode].buildGLSL(result, { linearLight }));
+        setGlslCode(buildCode(fitMode, result, { linearLight }, language));
         drawGraph(graphRef.current, samples, result, fitMode, linearLight);
         renderGradientPreview(shaderCanvasRef.current, result, fitMode, linearLight);
         drawOverlay(uiCanvasRef.current, canvasRef.current, p1, p2);
@@ -140,7 +141,7 @@ const App = () => {
     const result = FIT_MODES[paletteFitMode].fit(fittingColors, { degree, lockFrequency, tValues });
     setCoefficients(result);
     setGlslCode(
-      FIT_MODES[paletteFitMode].buildGLSL(result, { linearLight: useLinearLight }) + '\n\n' + buildColorGLSL(colors),
+      buildCode(paletteFitMode, result, { linearLight: useLinearLight }, language) + '\n\n' + buildColorCode(colors, language),
     );
     drawGraph(graphRef.current, colors, result, paletteFitMode, useLinearLight);
     renderGradientPreview(shaderCanvasRef.current, result, paletteFitMode, useLinearLight);
@@ -258,6 +259,8 @@ const App = () => {
     }
   };
 
+  const handleExampleLoad = (src) => setImageSrc(src);
+
   React.useEffect(() => {
     if (!imageSrc || !canvasRef.current) return;
     const img = new Image();
@@ -327,6 +330,19 @@ const App = () => {
   }, [paletteMethod]);
 
   React.useEffect(() => {
+    if (!coefficients || !imageSrc) return;
+    if (appMode === 'line') {
+      setGlslCode(buildCode(fitMode, coefficients, { linearLight }, language));
+    } else if (appMode === 'palette' && extractedColorsRef.current.length >= 2) {
+      const useLinearLight = linearLight && LINEAR_LIGHT_MODES.includes(paletteFitMode);
+      setGlslCode(
+        buildCode(paletteFitMode, coefficients, { linearLight: useLinearLight }, language) +
+          '\n\n' + buildColorCode(extractedColorsRef.current, language),
+      );
+    }
+  }, [language]);
+
+  React.useEffect(() => {
     if (!imageSrc) return;
     if (appMode === 'palette') {
       if (canvasRef.current && uiCanvasRef.current) {
@@ -364,9 +380,20 @@ const App = () => {
           <span className="text-[11px] font-semibold tracking-widest text-[var(--text-muted)] uppercase select-none ml-auto">
             Gradient Fitter
           </span>
+          <a
+            href="https://github.com/bhoffmann93/gradient-fitter"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[var(--text-muted)] hover:text-[var(--text)] transition-colors shrink-0"
+            aria-label="GitHub"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.868-.013-1.703-2.782.604-3.369-1.342-3.369-1.342-.454-1.155-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836a9.59 9.59 0 0 1 2.504.337c1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.579.688.481C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"/>
+            </svg>
+          </a>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.2fr] gap-5 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.2fr] gap-5 items-start lg:items-stretch">
           <div className="space-y-4 min-w-0">
             <ImagePanel
               imageSrc={imageSrc}
@@ -374,6 +401,7 @@ const App = () => {
               canvasRef={canvasRef}
               uiCanvasRef={uiCanvasRef}
               onImageUpload={handleImageUpload}
+              onExampleLoad={handleExampleLoad}
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
@@ -384,7 +412,7 @@ const App = () => {
             <GraphPanel graphRef={graphRef} shaderCanvasRef={shaderCanvasRef} />
           </div>
 
-          <div className="min-w-0 border border-[var(--border)] rounded-sm overflow-hidden">
+          <div className="min-w-0 border border-[var(--border)] rounded-sm overflow-hidden flex flex-col">
             {appMode === 'line' ? (
               <>
                 <div className="bg-[var(--surface)] p-5 space-y-5">
@@ -398,13 +426,13 @@ const App = () => {
                   />
                   <LineModeSettings fitMode={fitMode} setFitMode={setFitMode} degree={degree} setDegree={setDegree} />
                 </div>
-                <div className="border-t border-[var(--border)]">
-                  <CodePanel glslCode={glslCode} status={status} error={error} />
+                <div className="border-t border-[var(--border)] flex-1 flex flex-col">
+                  <CodePanel glslCode={glslCode} status={status} error={error} language={language} setLanguage={setLanguage} fitMode={fitMode} className="flex-1" />
                 </div>
               </>
             ) : (
               <>
-                <div className="flex bg-[var(--surface-muted)] border-b border-[var(--border)]">
+                <div className="flex bg-[var(--surface-muted)] border-b border-[var(--border)] shrink-0">
                   {[
                     ['settings', 'Settings'],
                     ['code', 'Code'],
@@ -422,9 +450,9 @@ const App = () => {
                     </button>
                   ))}
                 </div>
-                <div className="relative">
-                  <div className={rightTab === 'code' ? 'invisible pointer-events-none' : ''}>
-                    <div className="bg-[var(--surface)] p-5">
+                <div className="relative flex-1 min-h-0 overflow-hidden">
+                  <div className={`h-full ${rightTab === 'code' ? 'invisible pointer-events-none' : ''}`}>
+                    <div className="bg-[var(--surface)] p-5 h-full overflow-auto">
                       <div className="space-y-5">
                         <ImageAdjustPanel
                           contrast={contrast}
@@ -465,7 +493,7 @@ const App = () => {
                     </div>
                   </div>
                   <div className={`absolute inset-0 ${rightTab !== 'code' ? 'invisible pointer-events-none' : ''}`}>
-                    <CodePanel glslCode={glslCode} status={status} error={error} className="h-full" />
+                    <CodePanel glslCode={glslCode} status={status} error={error} language={language} setLanguage={setLanguage} fitMode={paletteFitMode} className="h-full" />
                   </div>
                 </div>
               </>

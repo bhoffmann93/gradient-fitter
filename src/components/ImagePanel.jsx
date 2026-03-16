@@ -1,5 +1,14 @@
 import React from 'react';
 import { Upload } from 'lucide-react';
+import flameImg from '../assets/images/flame.jpg';
+import tulipImg from '../assets/images/tulip.jpg';
+import spectrumImg from '../assets/images/spectrum.jpg';
+
+const EXAMPLES = [
+  { src: flameImg, label: 'Flame' },
+  { src: tulipImg, label: 'Tulip' },
+  { src: spectrumImg, label: 'Spectrum' },
+];
 
 const ImagePanel = ({
   imageSrc,
@@ -7,6 +16,7 @@ const ImagePanel = ({
   canvasRef,
   uiCanvasRef,
   onImageUpload,
+  onExampleLoad,
   onMouseDown,
   onMouseMove,
   onMouseUp,
@@ -15,6 +25,16 @@ const ImagePanel = ({
   onTouchEnd,
 }) => {
   const fileInputRef = React.useRef(null);
+  const [dragging, setDragging] = React.useState(false);
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
+      onImageUpload({ target: { files: [file] } });
+    }
+  };
 
   return (
     <div className="bg-[var(--surface)] p-5 border border-[var(--border)] rounded-sm">
@@ -29,14 +49,42 @@ const ImagePanel = ({
       </div>
 
       <div
-        className="relative flex justify-center items-center bg-[var(--bg)] border-2 border-dashed border-[var(--border-strong)] overflow-hidden min-h-[200px] max-h-[380px] select-none"
+        className={`relative flex justify-center items-center bg-[var(--bg)] border-2 border-dashed overflow-hidden min-h-[250px] max-h-[380px] select-none transition-colors ${dragging ? 'border-[var(--accent)]' : 'border-[var(--border-strong)]'}`}
         onClick={() => !imageSrc && fileInputRef.current?.click()}
+        onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={handleDrop}
       >
         {!imageSrc && (
-          <div className="text-[var(--text-muted)] flex flex-col items-center gap-2 pointer-events-none cursor-pointer">
-            <Upload className="w-10 h-10 opacity-25" />
-            <span className="text-xs font-semibold tracking-widest uppercase">Upload an image</span>
-            <span className="text-[10px] opacity-60 tracking-wider">PNG · JPG · WebP</span>
+          <div className="flex flex-col items-center gap-4 pointer-events-none">
+            <div className="text-[var(--text-muted)] flex flex-col items-center gap-2">
+              <Upload className="w-10 h-10 opacity-25" />
+              <span className="text-xs font-semibold tracking-widest uppercase">Upload an image</span>
+              <span className="text-[10px] opacity-60 tracking-wider">PNG · JPG · WebP</span>
+            </div>
+            <div className="flex flex-col items-center gap-2 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+              <span className="text-[9px] font-semibold uppercase tracking-widest text-[var(--text-muted)] opacity-60">
+                Examples
+              </span>
+              <div className="flex gap-2">
+                {EXAMPLES.map(({ src, label }) => (
+                  <button
+                    key={label}
+                    onClick={() => onExampleLoad(src)}
+                    className="flex flex-col items-center gap-1 group"
+                  >
+                    <img
+                      src={src}
+                      alt={label}
+                      className="w-16 h-10 object-cover rounded-sm border border-[var(--border)] group-hover:border-[var(--accent)] transition-colors"
+                    />
+                    <span className="text-[9px] font-semibold uppercase tracking-widest text-[var(--text-muted)] group-hover:text-[var(--accent)] transition-colors">
+                      {label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         )}
         <canvas ref={canvasRef} className="hidden" />
