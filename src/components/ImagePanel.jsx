@@ -1,11 +1,11 @@
 import React from 'react';
 import { Upload } from 'lucide-react';
-import flameImg from '../assets/images/flame.jpg';
+import sunsetImg from '../assets/images/sunset.jpg';
 import tulipImg from '../assets/images/tulip.jpg';
 import spectrumImg from '../assets/images/spectrum.jpg';
 
 const EXAMPLES = [
-  { src: flameImg, label: 'Flame' },
+  { src: sunsetImg, label: 'Sunset' },
   { src: tulipImg, label: 'Tulip' },
   { src: spectrumImg, label: 'Spectrum' },
 ];
