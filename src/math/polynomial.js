@@ -1,7 +1,7 @@
 import { solveLinearSystem } from './linalg.js';
 
 export const fitPolynomial = (samples, deg, tValues = null) => {
-  const N = deg + 1;
+  const N = Math.min(deg + 1, samples.length);
   const ATA = Array(N).fill(0).map(() => Array(N).fill(0));
   const ATb = { r: Array(N).fill(0), g: Array(N).fill(0), b: Array(N).fill(0) };
 
