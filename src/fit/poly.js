@@ -22,12 +22,12 @@ const buildGLSL = (coeffs) => {
   for (let i = 1; i <= deg; i++) {
     code += `    vec3 c${i} = vec3(${fmtGlsl(coeffs.r[i])}, ${fmtGlsl(coeffs.g[i])}, ${fmtGlsl(coeffs.b[i])});\n`;
   }
-  code += `\n    vec3 color = c0`;
+  const terms = [`c0`];
   for (let i = 1; i <= deg; i++) {
-    const tStr = i === 1 ? 't' : i === 2 ? 't*t' : i === 3 ? 't*t*t' : `pow(t, ${i}.0)`;
-    code += `\n        + c${i} * ${tStr}`;
+    const tStr = i === 1 ? 't' : i === 2 ? 't * t' : i === 3 ? 't * t * t' : `pow(t, ${i}.0)`;
+    terms.push(`c${i} * ${tStr}`);
   }
-  code += `;\n    return clamp(color, vec3(0.0), vec3(1.0));\n}`;
+  code += `\n    vec3 color = ${terms.join(' + ')};\n    return clamp(color, vec3(0.0), vec3(1.0));\n}`;
   return code;
 };
 

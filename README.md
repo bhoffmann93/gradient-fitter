@@ -1,4 +1,4 @@
-# gradient-fitter
+# Gradient Fitter
 
 ![Gradient Fitter](screenshot.png?v=2)
 
@@ -27,7 +27,7 @@ A browser tool for extracting color gradients from images. Upload an image, draw
 Both modes support **interpolation in Linear RGB** for Linear and Catmull modes — avoids the dark muddy midpoints you get when interpolating in sRGB space. The output includes the sRGB conversion.
 See: [What every coder should know about gamma](https://blog.johnnovak.net/2016/09/21/what-every-coder-should-know-about-gamma/).
 
-**Dominance Weighting** available for catmull-rom and linear which places the stops in relation to the dominance of colors extracted.
+**Stops Mode** (Weighted/Uniform) available for Catmull-Rom and Linear — places the stops in relation to the dominance of colors extracted.
 
 ## Curve Fitting
 
@@ -35,9 +35,9 @@ See: [What every coder should know about gamma](https://blog.johnnovak.net/2016/
 
 **Cosine** — fits a + b·cos(2π(ct+d)) per channel via random search with local perturbation. No closed-form solution exists for this parametric form; multiple restarts are run and the best fit by MSE is kept.
 
-**Linear** — direct linear interpolation between color stops. With dominance weighting the stops are spaced by pixel area rather than uniformly.
+**Linear** — direct linear interpolation between color stops. With stops mode weighted, stops are spaced by pixel area rather than uniformly.
 
-**Catmull-Rom** — smooth cubic spline through the extracted color stops using the standard Catmull-Rom basis. With dominance weighting the stop spacing is area-weighted.
+**Catmull-Rom** — smooth cubic spline through the extracted color stops using the standard Catmull-Rom basis. With stops mode weighted, stop spacing is area-weighted.
 
 ## About
 
