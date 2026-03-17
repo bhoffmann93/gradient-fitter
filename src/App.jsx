@@ -426,8 +426,11 @@ const App = () => {
       if (appMode === 'line' && lastSamplesRef.current && coefficients) {
         drawGraph(graphRef.current, lastSamplesRef.current, coefficients, fitMode, linearLight);
       } else if (appMode === 'palette' && extractedColorsRef.current.length >= 2 && coefficients) {
-        const useLL = linearLight && LINEAR_LIGHT_MODES.includes(paletteFitMode);
-        drawGraph(graphRef.current, extractedColorsRef.current, coefficients, paletteFitMode, useLL);
+        const needsRCoeffs = paletteFitMode === 'poly' || paletteFitMode === 'cosine';
+        if (needsRCoeffs ? coefficients.r : coefficients.colors) {
+          const useLL = linearLight && LINEAR_LIGHT_MODES.includes(paletteFitMode);
+          drawGraph(graphRef.current, extractedColorsRef.current, coefficients, paletteFitMode, useLL);
+        }
       }
     };
   }, [appMode, coefficients, fitMode, paletteFitMode, linearLight]);

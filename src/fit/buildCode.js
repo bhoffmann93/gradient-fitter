@@ -70,7 +70,7 @@ export const buildCosineJS = (coeffs, ts = false) => {
     `  const frequency = ${fmtArr([coeffs.r.c, coeffs.g.c, coeffs.b.c])};`,
     `  const phase     = ${fmtArr([coeffs.r.d, coeffs.g.d, coeffs.b.d])};`,
     `  return [0, 1, 2].map(k =>`,
-    `    offset[k] + amplitude[k] * Math.cos(6.28318 * (frequency[k] * t + phase[k]))`,
+    `    ${clamp01('offset[k] + amplitude[k] * Math.cos(6.28318 * (frequency[k] * t + phase[k]))')}`,
     `  )${cast};`,
     `}`,
   ].join('\n');

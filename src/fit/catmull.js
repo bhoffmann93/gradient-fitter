@@ -74,10 +74,9 @@ const buildGLSL = ({ colors, tValues }, { linearLight = false } = {}) => {
     code += `\n    );\n`;
     code += `    int i = ${n - 2}; float localT = 1.0;\n`;
     for (let j = 0; j < n - 1; j++) {
-      const range = Math.max(0.00001, tValues[j + 1] - tValues[j]).toFixed(5);
       const cond = j === 0 ? `if` : j === n - 2 ? `else` : `else if`;
       const guard = j === n - 2 ? `` : ` (t < colors[${j + 1}].w)`;
-      code += `    ${cond}${guard} { i = ${j}; localT = clamp((t - colors[${j}].w) / ${range}, 0.0, 1.0); }\n`;
+      code += `    ${cond}${guard} { i = ${j}; localT = clamp((t - colors[${j}].w) / (colors[${j + 1}].w - colors[${j}].w), 0.0, 1.0); }\n`;
     }
     code += `    vec3 p0 = colors[max(i - 1, 0)].rgb;\n`;
     code += `    vec3 p1 = colors[i].rgb;\n`;
@@ -89,7 +88,7 @@ const buildGLSL = ({ colors, tValues }, { linearLight = false } = {}) => {
     code += `    vec3 col = clamp(catmullRom(p0, p1, p2, p3, localT), 0.0, 1.0);\n`;
     code += `    return pow(col, vec3(0.4545)); // to sRGB\n}`;
   } else {
-    code += `    return catmullRom(p0, p1, p2, p3, localT);\n}`;
+    code += `    return clamp(catmullRom(p0, p1, p2, p3, localT), 0.0, 1.0);\n}`;
   }
   return code;
 };
