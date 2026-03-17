@@ -78,6 +78,24 @@ const LineModeSettings = ({ fitMode, setFitMode, degree, setDegree, lockFrequenc
           >
             iquilezles.org/articles/palettes
           </a>
+          {' · '}
+          <a
+            href="https://www.shadertoy.com/view/ll2GD3"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-[var(--text)] transition-colors"
+          >
+            ShaderToy
+          </a>
+          {' · '}
+          <a
+            href="https://www.youtube.com/shorts/TH3OTy5fTog"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-[var(--text)] transition-colors"
+          >
+            YouTube
+          </a>
         </p>
         <div className="flex items-center gap-3">
           <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 uppercase tracking-wider">

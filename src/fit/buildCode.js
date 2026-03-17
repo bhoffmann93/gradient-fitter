@@ -63,6 +63,7 @@ export const buildCosineJS = (coeffs, ts = false) => {
   return [
     buildHelpers(ts),
     ``,
+    `// Inigo Quilez (MIT) https://www.shadertoy.com/view/ll2GD3`,
     `// Returns [r, g, b] in [0, 1] – normalized sRGB`,
     `function cosPalette(${tParam})${retType} {`,
     `  const offset    = ${fmtArr([coeffs.r.a, coeffs.g.a, coeffs.b.a])};`,
