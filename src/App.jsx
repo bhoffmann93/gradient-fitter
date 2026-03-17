@@ -461,7 +461,7 @@ const App = () => {
           </div>
           <div className="flex flex-col items-end ml-auto select-none">
             <span className="text-[11px] font-semibold tracking-widest text-[var(--text-muted)] uppercase">Gradient Fitter</span>
-            <span className="text-[9px] font-normal tracking-wider text-[var(--text-muted)] opacity-60 normal-case">Fit image colors to shader-ready gradient code</span>
+            <span className="hidden sm:block text-[9px] font-normal tracking-wider text-[var(--text-muted)] opacity-60 normal-case">Fit image colors to shader-ready gradient code</span>
           </div>
           <a
             href="https://github.com/bhoffmann93/gradient-fitter"
