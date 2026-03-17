@@ -22,6 +22,7 @@ const App = () => {
 
   const [fitMode, setFitMode] = React.useState(DEFAULTS.fitMode);
   const [degree, setDegree] = React.useState(DEFAULTS.degree);
+  const [lineLockFrequency, setLineLockFrequency] = React.useState(true);
 
   const [colorCount, setColorCount] = React.useState(DEFAULTS.colorCount);
   const [lockFrequency, setLockFrequency] = React.useState(DEFAULTS.lockFrequency);
@@ -125,7 +126,7 @@ const App = () => {
         }
         if (samples.length < 2) throw new Error('Line too short');
         lastSamplesRef.current = samples;
-        const result = FIT_MODES[fitMode].fit(samples, { degree });
+        const result = FIT_MODES[fitMode].fit(samples, { degree, lockFrequency: lineLockFrequency });
         setCoefficients(result);
         setGlslCode(buildCode(fitMode, result, { linearLight }, language));
         drawGraph(graphRef.current, samples, result, fitMode, linearLight);
@@ -349,7 +350,7 @@ const App = () => {
 
   React.useEffect(() => {
     if (imageSrc && appMode === 'line') performFitting();
-  }, [degree, fitMode]);
+  }, [degree, fitMode, lineLockFrequency]);
 
   React.useEffect(() => {
     if (imageSrc && appMode === 'line' && uiCanvasRef.current && canvasRef.current) {
@@ -509,7 +510,7 @@ const App = () => {
                     maxLevel={maxLevel}
                     setMaxLevel={setMaxLevel}
                   />
-                  <LineModeSettings fitMode={fitMode} setFitMode={setFitMode} degree={degree} setDegree={setDegree} />
+                  <LineModeSettings fitMode={fitMode} setFitMode={setFitMode} degree={degree} setDegree={setDegree} lockFrequency={lineLockFrequency} setLockFrequency={setLineLockFrequency} />
                 </div>
                 <div className="border-t border-[var(--border)] flex-1 relative min-h-[420px]">
                   <div className="absolute inset-0">

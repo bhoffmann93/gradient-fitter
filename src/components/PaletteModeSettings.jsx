@@ -181,7 +181,7 @@ const PaletteModeSettings = ({
 
     <p className="text-[10px] text-[var(--text-muted)] leading-relaxed">
       {paletteFitMode === 'cosine'
-        ? 'Fits a + b·cos(2π(ct+d)) per channel. Smooth, loops perfectly with freq locked. Best for organic gradients.'
+        ? 'Fits a + b·cos(2π(ct+d)) per channel. Smooth, loops for t > 1.0 with freq locked.'
         : FIT_MODE_DESCRIPTIONS[paletteFitMode]}
     </p>
 
@@ -280,7 +280,7 @@ const PaletteModeSettings = ({
         </label>
         <Toggle on={lockFrequency} onToggle={() => setLockFrequency((v) => !v)} labelOn="Locked" labelOff="Free" />
         <span className="text-[10px] text-[var(--text-muted)]">
-          {lockFrequency ? 'Locked – gradient loops perfectly' : 'Free – more accurate fit, may not loop'}
+          {lockFrequency ? 'Locked – gradient loops for t > 1.0' : 'Free – more accurate fit, may not loop'}
         </span>
       </div>
     </Collapsible>

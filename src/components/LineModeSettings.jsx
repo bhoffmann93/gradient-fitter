@@ -1,11 +1,35 @@
 import React from 'react';
 
+const Toggle = ({ on, onToggle, labelOn, labelOff }) => (
+  <button
+    onClick={onToggle}
+    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+      on ? 'bg-[var(--accent)]' : 'bg-[var(--border-strong)]'
+    }`}
+  >
+    <span
+      className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+        on ? 'translate-x-4' : 'translate-x-1'
+      }`}
+    />
+    <span className="sr-only">{on ? labelOn : labelOff}</span>
+  </button>
+);
+
 const ALGO_DESCRIPTIONS = {
   poly: 'Least-squares polynomial fit per RGB channel. Higher degree = more flexibility but may overshoot outside 0–1. Use degree 3–4 for most gradients.',
-  cosine: 'Fits a + b·cos(2π(ct+d)) per color channel. Loops for t > 1.0.',
+  cosine: (
+    <>
+      Fits{' '}
+      <code className="font-mono bg-[var(--accent-bg)] text-[var(--accent)] px-1 py-0.5 rounded-sm text-[9px]">
+        a + b·cos(2π(ct+d))
+      </code>{' '}
+      per color channel. Loops for t &gt; 1.0 if freq locked.
+    </>
+  ),
 };
 
-const LineModeSettings = ({ fitMode, setFitMode, degree, setDegree }) => (
+const LineModeSettings = ({ fitMode, setFitMode, degree, setDegree, lockFrequency, setLockFrequency }) => (
   <div className="space-y-3">
     <div className="flex items-center gap-2">
       <span className="text-[9px] font-semibold text-[var(--text-muted)] uppercase tracking-widest">
@@ -40,19 +64,30 @@ const LineModeSettings = ({ fitMode, setFitMode, degree, setDegree }) => (
       </p>
     </div>
 
-    <div className="min-h-[26px] overflow-hidden">
+    <div className="overflow-hidden">
       {fitMode === 'cosine' ? (
-        <p key="cosine" className="text-[10px] text-[var(--text-muted)] pt-0.5" style={{ animation: 'fadeIn 0.15s ease' }}>
-          More info:{' '}
-          <a
-            href="https://iquilezles.org/articles/palettes/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline hover:text-[var(--text)] transition-colors"
-          >
-            iquilezles.org/articles/palettes
-          </a>
-        </p>
+        <div key="cosine" className="space-y-2" style={{ animation: 'fadeIn 0.15s ease' }}>
+          <div className="flex items-center gap-3">
+            <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 uppercase tracking-wider">
+              Lock freq
+            </label>
+            <Toggle on={lockFrequency} onToggle={() => setLockFrequency((v) => !v)} labelOn="Locked" labelOff="Free" />
+            <span className="text-[10px] text-[var(--text-muted)]">
+              {lockFrequency ? 'Locked – gradient loops for t > 1.0' : 'Free – more accurate fit, may not loop'}
+            </span>
+          </div>
+          <p className="text-[10px] text-[var(--text-muted)] pt-0.5">
+            More info:{' '}
+            <a
+              href="https://iquilezles.org/articles/palettes/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-[var(--text)] transition-colors"
+            >
+              iquilezles.org/articles/palettes
+            </a>
+          </p>
+        </div>
       ) : (
         <div key="poly" className="flex items-center gap-4 pt-0.5" style={{ animation: 'fadeIn 0.15s ease' }}>
           <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 uppercase tracking-wider">
