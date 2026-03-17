@@ -93,7 +93,7 @@ const PaletteModeSettings = ({
       <p className="text-[10px] text-[var(--text-muted)] leading-relaxed">
         {paletteMethod === 'dominant' && 'Ranks colors by pixel coverage – most frequent colors first. Deterministic.'}
         {paletteMethod === 'generative' &&
-          'Finds a diverse, well-distributed palette — prioritises colour variety over raw frequency. Varies on regenerate.'}
+          'Finds a diverse, well-distributed palette – prioritises colour variety over raw frequency. Varies on regenerate.'}
         {paletteMethod === 'api' && (
           <>
             <a

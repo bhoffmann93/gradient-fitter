@@ -17,7 +17,7 @@ const Toggle = ({ on, onToggle, labelOn, labelOff }) => (
 );
 
 const ALGO_DESCRIPTIONS = {
-  poly: 'Least-squares polynomial fit per RGB channel. Higher degree = more flexibility but may overshoot outside 0–1 — clamp in your shader. Degree 3–4 works for most gradients.',
+  poly: 'Least-squares polynomial fit per RGB channel. Higher degree = more flexibility but may overshoot outside 0–1 – clamp in your shader. Degree 3–4 works for most gradients.',
   cosine: (
     <>
       Fits{' '}

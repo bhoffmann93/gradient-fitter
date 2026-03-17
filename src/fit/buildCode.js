@@ -36,13 +36,11 @@ export const buildPolyJS = (coeffs, ts = false) => {
   const cast = ts ? ' as [number, number, number]' : '';
   const tParam = ts ? 't: number' : 't';
   const deg = coeffs.r.length;
-  const rows = Array.from({ length: deg }, (_, i) =>
-    fmtArr([coeffs.r[i], coeffs.g[i], coeffs.b[i]])
-  );
+  const rows = Array.from({ length: deg }, (_, i) => fmtArr([coeffs.r[i], coeffs.g[i], coeffs.b[i]]));
   return [
     buildHelpers(ts),
     ``,
-    `// Returns [r, g, b] in [0, 1] — normalized sRGB`,
+    `// Returns [r, g, b] in [0, 1] – normalized sRGB`,
     `function polyPalette(${tParam})${retType} {`,
     `  const coeffs${typeAnn} = [`,
     ...rows.map((r, i) => `    ${r}${i < rows.length - 1 ? ',' : ''}`),
@@ -65,7 +63,7 @@ export const buildCosineJS = (coeffs, ts = false) => {
   return [
     buildHelpers(ts),
     ``,
-    `// Returns [r, g, b] in [0, 1] — normalized sRGB`,
+    `// Returns [r, g, b] in [0, 1] – normalized sRGB`,
     `function cosPalette(${tParam})${retType} {`,
     `  const offset    = ${fmtArr([coeffs.r.a, coeffs.g.a, coeffs.b.a])};`,
     `  const amplitude = ${fmtArr([coeffs.r.b, coeffs.g.b, coeffs.b.b])};`,
@@ -139,9 +137,7 @@ export const buildCatmullJS = ({ colors, tValues }, { linearLight = false } = {}
   const isUniform = tValues.every((tv, i) => Math.abs(tv - i / (n - 1)) < 0.001);
   const retType = ts ? ': [number, number, number]' : '';
   const tParam = ts ? 't: number' : 't';
-  const crParam = ts
-    ? 'p0: number[], p1: number[], p2: number[], p3: number[], t: number'
-    : 'p0, p1, p2, p3, t';
+  const crParam = ts ? 'p0: number[], p1: number[], p2: number[], p3: number[], t: number' : 'p0, p1, p2, p3, t';
   const crRet = ts ? ': number[]' : '';
   const cast = ts ? ' as [number, number, number]' : '';
   const colorSpace = linearLight ? 'Linear RGB' : 'sRGB';
