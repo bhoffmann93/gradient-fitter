@@ -15,7 +15,7 @@ const buildGLSL = (coeffs) => {
   code += `    vec3 b = vec3(${fmtGlsl(coeffs.r.b)}, ${fmtGlsl(coeffs.g.b)}, ${fmtGlsl(coeffs.b.b)});\n`;
   code += `    vec3 c = vec3(${fmtGlsl(coeffs.r.c)}, ${fmtGlsl(coeffs.g.c)}, ${fmtGlsl(coeffs.b.c)});\n`;
   code += `    vec3 d = vec3(${fmtGlsl(coeffs.r.d)}, ${fmtGlsl(coeffs.g.d)}, ${fmtGlsl(coeffs.b.d)});\n\n`;
-  code += `    return a + b * cos( 6.28318 * (c * t + d) );\n}`;
+  code += `    return clamp(a + b * cos( 6.28318 * (c * t + d) ), 0.0, 1.0);\n}`;
   return code;
 };
 

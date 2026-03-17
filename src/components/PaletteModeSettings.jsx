@@ -28,7 +28,7 @@ const FIT_MODE_ORDER = ['catmull', 'linear', 'poly', 'cosine'];
 
 const FIT_MODE_DESCRIPTIONS = {
   cosine: null,
-  poly: 'Least-squares polynomial through the colors. Can overshoot – values may exceed 0–1 and need clamping in your shader. Higher degree = more flexibility, more risk of artifacts.',
+  poly: 'Least-squares polynomial through the colors. Can overshoot – output is clamped to 0–1. Higher degree = more flexibility, more risk of artifacts.',
   linear:
     'Interpolates directly between color stops. Exact colors, no overshoot. Stops mode stretches dominant colors across a wider portion of the gradient.',
   catmull:

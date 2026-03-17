@@ -88,7 +88,7 @@ const buildGLSL = ({ colors, tValues }, { linearLight = false } = {}) => {
     code += `    vec3 col = clamp(catmullRom(p0, p1, p2, p3, localT), 0.0, 1.0);\n`;
     code += `    return pow(col, vec3(0.4545)); // to sRGB\n}`;
   } else {
-    code += `    return catmullRom(p0, p1, p2, p3, localT);\n}`;
+    code += `    return clamp(catmullRom(p0, p1, p2, p3, localT), 0.0, 1.0);\n}`;
   }
   return code;
 };
