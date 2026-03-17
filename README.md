@@ -31,13 +31,13 @@ See: [What every coder should know about gamma](https://blog.johnnovak.net/2016/
 
 ## Curve Fitting
 
-**Polynomial** — builds the normal equations AᵀAx = Aᵀb from sampled RGB values and solves per channel using Gaussian elimination with partial pivoting. Degree 1–6, configurable.
+**Polynomial** — least-squares fit per RGB channel. Degree 1–6, configurable.
 
-**Cosine** — fits a + b·cos(2π(ct+d)) per channel via random search with local perturbation. No closed-form solution exists for this parametric form; multiple restarts are run and the best fit by MSE is kept.
+**Cosine** — random search across multiple restarts, best fit by MSE is kept.
 
-**Linear** — direct linear interpolation between color stops. With stops mode weighted, stops are spaced by pixel area rather than uniformly.
+**Linear** — direct interpolation between color stops. Stops mode weighted spaces stops by pixel area.
 
-**Catmull-Rom** — smooth cubic spline through the extracted color stops using the standard Catmull-Rom basis. With stops mode weighted, stop spacing is area-weighted.
+**Catmull-Rom** — smooth spline through the color stops. Stops mode weighted applies area-based spacing.
 
 ## About
 
