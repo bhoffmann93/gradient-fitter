@@ -1,6 +1,6 @@
 # Gradient Fitter
 
-![Gradient Fitter](screenshot.png?v=2)
+![Gradient Fitter](public/screenshot.png)
 
 **Live Version:** https://www.bernhard-hoffmann.com/gradient-fitter/
 
