@@ -17,14 +17,14 @@ const Toggle = ({ on, onToggle, labelOn, labelOff }) => (
 );
 
 const ALGO_DESCRIPTIONS = {
-  poly: 'Least-squares polynomial fit per RGB channel. Higher degree = more flexibility but may overshoot outside 0–1. Use degree 3–4 for most gradients.',
+  poly: 'Least-squares polynomial fit per RGB channel. Higher degree = more flexibility but may overshoot outside 0–1 — clamp in your shader. Degree 3–4 works for most gradients.',
   cosine: (
     <>
       Fits{' '}
       <code className="font-mono bg-[var(--accent-bg)] text-[var(--accent)] px-1 py-0.5 rounded-sm text-[9px]">
         a + b·cos(2π(ct+d))
       </code>{' '}
-      per RGB color channel. Loops for t &gt; 1.0 if freq locked.
+      per RGB channel. When freq is locked, the gradient loops for t &gt; 1.0.
     </>
   ),
 };
@@ -81,7 +81,7 @@ const LineModeSettings = ({ fitMode, setFitMode, degree, setDegree, lockFrequenc
         </p>
         <div className="flex items-center gap-3">
           <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 uppercase tracking-wider">
-            Lock freq
+            Looping
           </label>
           <Toggle on={lockFrequency} onToggle={() => setLockFrequency((v) => !v)} labelOn="Locked" labelOff="Free" />
           <span className="text-[10px] text-[var(--text-muted)]">
