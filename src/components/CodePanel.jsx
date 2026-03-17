@@ -3,15 +3,15 @@ import { RefreshCw, AlertCircle } from 'lucide-react';
 import { LANGS } from '../fit/index.js';
 
 const EXAMPLE_LINKS = {
-  glsl: { label: 'ShaderToy example', url: 'https://www.shadertoy.com/view/sf23zh' },
-  hlsl: { label: 'ShaderToy example', url: 'https://www.shadertoy.com/view/sf23zh' },
-  js:   {
-    default: { label: 'p5.js example', url: 'https://editor.p5js.org/bhoffmann93/sketches/KP6EBi5KO' },
-    catmull: { label: 'p5.js example', url: 'https://editor.p5js.org/bhoffmann93/sketches/-v3Wm2rqn' },
+  glsl: { label: 'ShaderToy Template', url: 'https://www.shadertoy.com/view/sf23zh' },
+  hlsl: { label: 'ShaderToy Template', url: 'https://www.shadertoy.com/view/sf23zh' },
+  js: {
+    default: { label: 'p5.js Template', url: 'https://editor.p5js.org/bhoffmann93/sketches/KP6EBi5KO' },
+    catmull: { label: 'p5.js Template', url: 'https://editor.p5js.org/bhoffmann93/sketches/-v3Wm2rqn' },
   },
-  ts:   {
-    default: { label: 'p5.js example', url: 'https://editor.p5js.org/bhoffmann93/sketches/KP6EBi5KO' },
-    catmull: { label: 'p5.js example', url: 'https://editor.p5js.org/bhoffmann93/sketches/-v3Wm2rqn' },
+  ts: {
+    default: { label: 'p5.js Template', url: 'https://editor.p5js.org/bhoffmann93/sketches/KP6EBi5KO' },
+    catmull: { label: 'p5.js Template', url: 'https://editor.p5js.org/bhoffmann93/sketches/-v3Wm2rqn' },
   },
 };
 
@@ -57,7 +57,10 @@ const CodePanel = ({ glslCode, status, error, language, setLanguage, fitMode, cl
       </div>
     </div>
 
-    <div className="flex-1 min-h-0 font-mono text-xs leading-relaxed overflow-auto whitespace-pre bg-[var(--code-surface)] p-4 border border-[var(--code-border)] w-full min-w-0" style={{ scrollbarGutter: 'stable' }}>
+    <div
+      className="flex-1 min-h-0 font-mono text-xs leading-relaxed overflow-auto whitespace-pre bg-[var(--code-surface)] p-4 border border-[var(--code-border)] w-full min-w-0"
+      style={{ scrollbarGutter: 'stable' }}
+    >
       {glslCode || '// Upload an image to get started'}
     </div>
 
