@@ -180,9 +180,15 @@ const PaletteModeSettings = ({
     </div>
 
     <p className="text-[10px] text-[var(--text-muted)] leading-relaxed">
-      {paletteFitMode === 'cosine'
-        ? 'Fits a + b·cos(2π(ct+d)) per channel. Smooth, loops for t > 1.0 with freq locked.'
-        : FIT_MODE_DESCRIPTIONS[paletteFitMode]}
+      {paletteFitMode === 'cosine' ? (
+        <>
+          Fits{' '}
+          <code className="font-mono bg-[var(--accent-bg)] text-[var(--accent)] px-1 py-0.5 rounded-sm text-[9px]">
+            a + b·cos(2π(ct+d))
+          </code>{' '}
+          per RGB channel. Loops for t &gt; 1.0 if freq locked.
+        </>
+      ) : FIT_MODE_DESCRIPTIONS[paletteFitMode]}
     </p>
 
     <Collapsible open={paletteFitMode === 'cosine'}>
@@ -327,6 +333,7 @@ const PaletteModeSettings = ({
           </button>
         </div>
       </div>
+      <p className="text-[9px] text-[var(--text-muted)] opacity-60">Sorted by luminance by default. Reset restores this order.</p>
       <div className="overflow-hidden border border-[var(--border)] h-12">
         <canvas ref={paletteSwatchRef} width={500} height={48} className="w-full h-full" />
       </div>

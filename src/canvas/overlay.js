@@ -1,4 +1,4 @@
-import { OVERLAY_LINE_WIDTH, OVERLAY_LINE_OUTLINE, OVERLAY_NODE_RADIUS, OVERLAY_NODE_RADIUS_HOVER, OVERLAY_NODE_OUTLINE, OVERLAY_NODE_RING } from '../config.js';
+import { OVERLAY_LINE_WIDTH, OVERLAY_LINE_OUTLINE, OVERLAY_NODE_RADIUS, OVERLAY_NODE_RADIUS_HOVER, OVERLAY_NODE_OUTLINE } from '../config.js';
 
 const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
@@ -33,15 +33,6 @@ export const drawOverlay = (uiCanvas, sourceCanvas, p1, p2, hoveredPoint = null)
   ctx.stroke();
 
   const drawNode = (x, y, color, hovered) => {
-    if (hovered) {
-      ctx.beginPath();
-      ctx.arc(x, y, OVERLAY_NODE_RING * s, 0, Math.PI * 2);
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 1.5 * s;
-      ctx.globalAlpha = 0.35;
-      ctx.stroke();
-      ctx.globalAlpha = 1;
-    }
     ctx.beginPath();
     ctx.arc(x, y, (hovered ? OVERLAY_NODE_RADIUS_HOVER : OVERLAY_NODE_RADIUS) * s, 0, Math.PI * 2);
     ctx.fillStyle = color;

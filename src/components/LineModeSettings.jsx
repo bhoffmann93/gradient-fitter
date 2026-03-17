@@ -24,7 +24,7 @@ const ALGO_DESCRIPTIONS = {
       <code className="font-mono bg-[var(--accent-bg)] text-[var(--accent)] px-1 py-0.5 rounded-sm text-[9px]">
         a + b·cos(2π(ct+d))
       </code>{' '}
-      per color channel. Loops for t &gt; 1.0 if freq locked.
+      per RGB color channel. Loops for t &gt; 1.0 if freq locked.
     </>
   ),
 };
@@ -64,49 +64,50 @@ const LineModeSettings = ({ fitMode, setFitMode, degree, setDegree, lockFrequenc
       </p>
     </div>
 
-    <div className="overflow-hidden">
-      {fitMode === 'cosine' ? (
-        <div key="cosine" className="space-y-2" style={{ animation: 'fadeIn 0.15s ease' }}>
-          <div className="flex items-center gap-3">
-            <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 uppercase tracking-wider">
-              Lock freq
-            </label>
-            <Toggle on={lockFrequency} onToggle={() => setLockFrequency((v) => !v)} labelOn="Locked" labelOff="Free" />
-            <span className="text-[10px] text-[var(--text-muted)]">
-              {lockFrequency ? 'Locked – gradient loops for t > 1.0' : 'Free – more accurate fit, may not loop'}
-            </span>
-          </div>
-          <p className="text-[10px] text-[var(--text-muted)] pt-0.5">
-            More info:{' '}
-            <a
-              href="https://iquilezles.org/articles/palettes/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline hover:text-[var(--text)] transition-colors"
-            >
-              iquilezles.org/articles/palettes
-            </a>
-          </p>
-        </div>
-      ) : (
-        <div key="poly" className="flex items-center gap-4 pt-0.5" style={{ animation: 'fadeIn 0.15s ease' }}>
+    <div className="relative h-[52px]">
+      <div
+        className={`absolute inset-0 transition-opacity duration-150 space-y-2 ${fitMode === 'cosine' ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+      >
+        <p className="text-[10px] text-[var(--text-muted)]">
+          More info:{' '}
+          <a
+            href="https://iquilezles.org/articles/palettes/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-[var(--text)] transition-colors"
+          >
+            iquilezles.org/articles/palettes
+          </a>
+        </p>
+        <div className="flex items-center gap-3">
           <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 uppercase tracking-wider">
-            Degree
+            Lock freq
           </label>
-          <input
-            type="range"
-            min="1"
-            max="6"
-            step="1"
-            value={degree}
-            onChange={(e) => setDegree(parseInt(e.target.value))}
-            className="flex-1 h-1 bg-[var(--border)] rounded cursor-pointer accent-[var(--accent)]"
-          />
-          <span className="text-xs font-mono bg-[var(--accent-bg)] text-[var(--accent)] px-2 py-0.5 rounded-sm">
-            {degree}
+          <Toggle on={lockFrequency} onToggle={() => setLockFrequency((v) => !v)} labelOn="Locked" labelOff="Free" />
+          <span className="text-[10px] text-[var(--text-muted)]">
+            {lockFrequency ? 'Locked – loops for t > 1.0' : 'Free – more accurate, may not loop'}
           </span>
         </div>
-      )}
+      </div>
+      <div
+        className={`absolute inset-0 flex items-center gap-4 transition-opacity duration-150 ${fitMode === 'poly' ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+      >
+        <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 uppercase tracking-wider">
+          Degree
+        </label>
+        <input
+          type="range"
+          min="1"
+          max="6"
+          step="1"
+          value={degree}
+          onChange={(e) => setDegree(parseInt(e.target.value))}
+          className="flex-1 h-1 bg-[var(--border)] rounded cursor-pointer accent-[var(--accent)]"
+        />
+        <span className="text-xs font-mono bg-[var(--accent-bg)] text-[var(--accent)] px-2 py-0.5 rounded-sm">
+          {degree}
+        </span>
+      </div>
     </div>
   </div>
 );
