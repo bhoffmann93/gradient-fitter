@@ -61,12 +61,15 @@ const PaletteModeSettings = ({
   imageSrc,
   onRegenerate,
   onShuffle,
+  onResetShuffle,
 }) => (
   <div className="space-y-3">
     <h3 className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-widest">Palette Settings</h3>
 
     <div className="flex items-center gap-2">
-      <span className="text-[9px] font-semibold text-[var(--text-muted)] uppercase tracking-widest">Extraction</span>
+      <span className="text-[9px] font-semibold text-[var(--text-muted)] uppercase tracking-widest">
+        Color Extraction
+      </span>
       <div className="flex-1 border-t border-[var(--border)]" />
     </div>
 
@@ -154,7 +157,9 @@ const PaletteModeSettings = ({
     </Collapsible>
 
     <div className="flex items-center gap-2 pt-1">
-      <span className="text-[9px] font-semibold text-[var(--text-muted)] uppercase tracking-widest">Fit Function</span>
+      <span className="text-[9px] font-semibold text-[var(--text-muted)] uppercase tracking-widest">
+        Curve Fitting Function
+      </span>
       <div className="flex-1 border-t border-[var(--border)]" />
     </div>
 
@@ -284,7 +289,7 @@ const PaletteModeSettings = ({
       <div className="space-y-1.5 pt-0.5">
         <div className="flex items-center gap-3">
           <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 uppercase tracking-wider">
-            Dominance
+            Stops Mode
           </label>
           <Toggle
             on={weightDominance}
@@ -307,12 +312,20 @@ const PaletteModeSettings = ({
         <h4 className="text-[9px] font-semibold text-[var(--text-muted)] uppercase tracking-widest">
           Extracted Colors
         </h4>
-        <button
-          onClick={onShuffle}
-          className="flex items-center gap-1 text-[9px] bg-[var(--text)] hover:bg-[var(--text-hover)] text-[var(--bg)] px-2 py-0.5 rounded-sm transition-colors tracking-wider uppercase font-semibold"
-        >
-          <Shuffle className="w-3 h-3" /> Shuffle
-        </button>
+        <div className="flex gap-1">
+          <button
+            onClick={onResetShuffle}
+            className="text-[9px] text-[var(--text-muted)] border border-[var(--border)] px-2 py-0.5 rounded-sm transition-colors tracking-wider uppercase font-semibold hover:text-[var(--text)] hover:border-[var(--border-strong)]"
+          >
+            Reset
+          </button>
+          <button
+            onClick={onShuffle}
+            className="flex items-center gap-1 text-[9px] bg-[var(--text)] hover:bg-[var(--text-hover)] text-[var(--bg)] px-2 py-0.5 rounded-sm transition-colors tracking-wider uppercase font-semibold"
+          >
+            <Shuffle className="w-3 h-3" /> Shuffle
+          </button>
+        </div>
       </div>
       <div className="overflow-hidden border border-[var(--border)] h-12">
         <canvas ref={paletteSwatchRef} width={500} height={48} className="w-full h-full" />

@@ -60,6 +60,7 @@ const App = () => {
   const shaderCanvasRef = React.useRef(null);
   const apiSeedsRef = React.useRef(null);
   const extractedColorsRef = React.useRef([]);
+  const originalExtractedColorsRef = React.useRef([]);
   const paletteGradientRef = React.useRef(null);
   const paletteSwatchRef = React.useRef(null);
 
@@ -176,6 +177,7 @@ const App = () => {
         colors = extractGenerative(imageData, colorCount);
       }
       colors.sort((a, b) => a.lum - b.lum);
+      originalExtractedColorsRef.current = colors;
       extractedColorsRef.current = colors;
       setExtractedColors(colors);
       drawSwatches(paletteSwatchRef.current, colors);
@@ -193,6 +195,14 @@ const App = () => {
     extractedColorsRef.current = shuffled;
     setExtractedColors(shuffled);
     performPaletteRefit(shuffled);
+  };
+
+  const resetShuffleColors = () => {
+    const original = originalExtractedColorsRef.current;
+    if (original.length === 0) return;
+    extractedColorsRef.current = original;
+    setExtractedColors(original);
+    performPaletteRefit(original);
   };
 
   const handleMouseDown = (e) => {
@@ -284,6 +294,7 @@ const App = () => {
     setExtractedColors([]);
     setPaletteDrawData(null);
     extractedColorsRef.current = [];
+    originalExtractedColorsRef.current = [];
     apiSeedsRef.current = null;
     for (const ref of [shaderCanvasRef, graphRef, uiCanvasRef]) {
       const canvas = ref.current;
@@ -564,6 +575,7 @@ const App = () => {
                           imageSrc={imageSrc}
                           onRegenerate={performPaletteFit}
                           onShuffle={shuffleColors}
+                          onResetShuffle={resetShuffleColors}
                         />
                       </div>
                     </div>

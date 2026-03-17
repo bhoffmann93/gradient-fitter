@@ -50,7 +50,7 @@ const ImagePanel = ({
           {imageSrc && (
             <button
               onClick={onReset}
-              className="text-[10px] font-semibold text-[var(--text-muted)] border border-[var(--border)] px-3 py-1.5 rounded-sm cursor-pointer hover:text-[var(--text)] hover:border-[var(--border-strong)] tracking-widest uppercase transition-colors"
+              className="text-[10px] font-semibold bg-[var(--text)] text-[var(--bg)] px-3 py-1.5 rounded-sm cursor-pointer hover:bg-[var(--text-hover)] tracking-widest uppercase transition-colors"
             >
               Reset
             </button>
