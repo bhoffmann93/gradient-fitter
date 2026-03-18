@@ -13,7 +13,7 @@ export const computeWeightedTValues = (colors) => {
 
 export const solveCosineParams = (samples, steps = SOLVER_STEPS, lockFreq = false, tValues = null) => {
   const solveChannel = (accessor) => {
-    let bestParams = { a: 0.5, b: 0.5, c: 1.0, d: 0.0 };
+    let bestParams = { brightness: 0.5, contrast: 0.5, frequency: 1.0, phase: 0.0 };
     let bestError = Infinity;
 
     const cCandidates = lockFreq ? [1, 2, 3] : null;
@@ -22,7 +22,7 @@ export const solveCosineParams = (samples, steps = SOLVER_STEPS, lockFreq = fals
       let err = 0;
       for (let i = 0; i < samples.length; i++) {
         const t = tValues ? tValues[i] : i / (samples.length - 1);
-        const predicted = p.a + p.b * Math.cos(2 * Math.PI * (p.c * t + p.d));
+        const predicted = p.brightness + p.contrast * Math.cos(2 * Math.PI * (p.frequency * t + p.phase));
         err += (accessor(samples[i]) - predicted) ** 2;
       }
       return err;
@@ -30,20 +30,20 @@ export const solveCosineParams = (samples, steps = SOLVER_STEPS, lockFreq = fals
 
     for (let r = 0; r < (cCandidates ? 3 : 50); r++) {
       const p = {
-        a: cCandidates ? 0.5 : Math.random(),
-        b: cCandidates ? 0.3 : Math.random(),
-        c: cCandidates ? cCandidates[r] : 0.5 + Math.random() * 3.0,
-        d: cCandidates ? 0.0 : Math.random(),
+        brightness: cCandidates ? 0.5 : Math.random(),
+        contrast:   cCandidates ? 0.3 : Math.random(),
+        frequency:  cCandidates ? cCandidates[r] : 0.5 + Math.random() * 3.0,
+        phase:      cCandidates ? 0.0 : Math.random(),
       };
       let err = calcError(p);
       let lr = 0.1;
       let cur = p;
       for (let i = 0; i < 200; i++) {
         const candidate = {
-          a: cur.a + (Math.random() - 0.5) * lr,
-          b: cur.b + (Math.random() - 0.5) * lr,
-          c: lockFreq ? cur.c : cur.c + (Math.random() - 0.5) * lr,
-          d: cur.d + (Math.random() - 0.5) * lr,
+          brightness: cur.brightness + (Math.random() - 0.5) * lr,
+          contrast:   cur.contrast   + (Math.random() - 0.5) * lr,
+          frequency:  lockFreq ? cur.frequency : cur.frequency + (Math.random() - 0.5) * lr,
+          phase:      cur.phase      + (Math.random() - 0.5) * lr,
         };
         const cErr = calcError(candidate);
         if (cErr < err) { cur = candidate; err = cErr; }
@@ -57,10 +57,10 @@ export const solveCosineParams = (samples, steps = SOLVER_STEPS, lockFreq = fals
     for (let i = 0; i < steps; i++) {
       if (i % 500 === 0) lr *= 0.8;
       const candidate = {
-        a: p.a + (Math.random() - 0.5) * lr,
-        b: p.b + (Math.random() - 0.5) * lr,
-        c: lockFreq ? p.c : p.c + (Math.random() - 0.5) * lr * 0.5,
-        d: p.d + (Math.random() - 0.5) * lr,
+        brightness: p.brightness + (Math.random() - 0.5) * lr,
+        contrast:   p.contrast   + (Math.random() - 0.5) * lr,
+        frequency:  lockFreq ? p.frequency : p.frequency + (Math.random() - 0.5) * lr * 0.5,
+        phase:      p.phase      + (Math.random() - 0.5) * lr,
       };
       const cErr = calcError(candidate);
       if (cErr < err) { p = candidate; err = cErr; }

@@ -54,7 +54,7 @@ const LineModeSettings = ({ fitMode, setFitMode, degree, setDegree, lockFrequenc
       ))}
     </div>
 
-    <div className="min-h-[40px]">
+    <div className="min-h-[40px] space-y-1">
       <p
         key={fitMode}
         className="text-[10px] text-[var(--text-muted)] leading-relaxed"
@@ -62,12 +62,7 @@ const LineModeSettings = ({ fitMode, setFitMode, degree, setDegree, lockFrequenc
       >
         {ALGO_DESCRIPTIONS[fitMode]}
       </p>
-    </div>
-
-    <div className="relative h-[52px]">
-      <div
-        className={`absolute inset-0 transition-opacity duration-150 space-y-2 ${fitMode === 'cosine' ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
-      >
+      {fitMode === 'cosine' && (
         <p className="text-[10px] text-[var(--text-muted)]">
           More info:{' '}
           <a
@@ -97,6 +92,13 @@ const LineModeSettings = ({ fitMode, setFitMode, degree, setDegree, lockFrequenc
             YouTube
           </a>
         </p>
+      )}
+    </div>
+
+    <div className="relative h-[28px]">
+      <div
+        className={`absolute inset-0 transition-opacity duration-150 ${fitMode === 'cosine' ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+      >
         <div className="flex items-center gap-3">
           <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 uppercase tracking-wider">
             Looping

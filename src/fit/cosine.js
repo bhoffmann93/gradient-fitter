@@ -11,17 +11,18 @@ const fit = (samples, { lockFrequency = false, tValues = null } = {}) =>
   solveCosineParams(samples, undefined, lockFrequency, tValues);
 
 const evaluate = (coeffs, t) => {
-  const val = (p) => p.a + p.b * Math.cos(2 * Math.PI * (p.c * t + p.d));
+  const val = (p) => p.brightness + p.contrast * Math.cos(2 * Math.PI * (p.frequency * t + p.phase));
   return { r: val(coeffs.r), g: val(coeffs.g), b: val(coeffs.b) };
 };
 
 const buildGLSL = (coeffs) => {
   let code = `// Inigo Quilez (MIT) https://www.shadertoy.com/view/ll2GD3\nvec3 cosPalette(float t) {\n`;
-  code += `    vec3 a = vec3(${fmtGlsl(coeffs.r.a)}, ${fmtGlsl(coeffs.g.a)}, ${fmtGlsl(coeffs.b.a)});\n`;
-  code += `    vec3 b = vec3(${fmtGlsl(coeffs.r.b)}, ${fmtGlsl(coeffs.g.b)}, ${fmtGlsl(coeffs.b.b)});\n`;
-  code += `    vec3 c = vec3(${fmtGlsl(coeffs.r.c)}, ${fmtGlsl(coeffs.g.c)}, ${fmtGlsl(coeffs.b.c)});\n`;
-  code += `    vec3 d = vec3(${fmtGlsl(coeffs.r.d)}, ${fmtGlsl(coeffs.g.d)}, ${fmtGlsl(coeffs.b.d)});\n\n`;
-  code += `    return clamp(a + b * cos( 6.28318 * (c * t + d) ), 0.0, 1.0);\n}`;
+  code += `    vec3 brightness = vec3(${fmtGlsl(coeffs.r.brightness)}, ${fmtGlsl(coeffs.g.brightness)}, ${fmtGlsl(coeffs.b.brightness)});\n`;
+  code += `    vec3 contrast = vec3(${fmtGlsl(coeffs.r.contrast)}, ${fmtGlsl(coeffs.g.contrast)}, ${fmtGlsl(coeffs.b.contrast)});\n`;
+  code += `    vec3 frequency = vec3(${fmtGlsl(coeffs.r.frequency)}, ${fmtGlsl(coeffs.g.frequency)}, ${fmtGlsl(coeffs.b.frequency)});\n`;
+  code += `    vec3 phase = vec3(${fmtGlsl(coeffs.r.phase)}, ${fmtGlsl(coeffs.g.phase)}, ${fmtGlsl(coeffs.b.phase)});\n\n`;
+  code += `    vec3 color = brightness + contrast * cos(6.28318 * (frequency * t + phase));\n`;
+  code += `    return clamp(color, 0.0, 1.0);\n}`;
   return code;
 };
 
