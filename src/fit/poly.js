@@ -27,7 +27,7 @@ const buildGLSL = (coeffs) => {
     const tStr = i === 1 ? 't' : i === 2 ? 't * t' : i === 3 ? 't * t * t' : `pow(t, ${i}.0)`;
     terms.push(`c${i} * ${tStr}`);
   }
-  code += `\n    vec3 color = ${terms.join(' + ')};\n    return clamp(color, vec3(0.0), vec3(1.0));\n}`;
+  code += `\n    vec3 color = ${terms.join(' + ')};\n    return clamp(color, 0.0, 1.0);\n}`;
   return code;
 };
 

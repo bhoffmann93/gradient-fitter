@@ -26,7 +26,8 @@ export const glslToHLSL = (code) =>
     .replace(/^(\s+)\);$/gm, '$1};')
     .replace(/\bmix\(/g, 'lerp(')
     .replace(/\bfract\(/g, 'frac(')
-    .replace(/\bint\(/g, '(int)(');
+    .replace(/\bint\(/g, '(int)(')
+    .replace(/pow\(([^,]+),\s*float3\(([\d.]+)\)\)/g, 'pow($1, $2)');
 
 // ─── Poly JS/TS ───────────────────────────────────────────────────────────────
 

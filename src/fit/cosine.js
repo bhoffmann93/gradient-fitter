@@ -22,7 +22,7 @@ const buildGLSL = (coeffs) => {
   code += `    vec3 frequency = vec3(${fmtGlsl(coeffs.r.frequency)}, ${fmtGlsl(coeffs.g.frequency)}, ${fmtGlsl(coeffs.b.frequency)});\n`;
   code += `    vec3 phase = vec3(${fmtGlsl(coeffs.r.phase)}, ${fmtGlsl(coeffs.g.phase)}, ${fmtGlsl(coeffs.b.phase)});\n\n`;
   code += `    vec3 color = brightness + contrast * cos(6.28318 * (frequency * t + phase));\n`;
-  code += `    return clamp(color, 0.0, 1.0);\n}`;
+  code += `    return clamp(color, 0.0, 1.0); // sRGB\n}`;
   return code;
 };
 
