@@ -57,7 +57,7 @@ const ImagePanel = ({
           )}
           <label className="text-[10px] font-semibold bg-[var(--text)] text-[var(--bg)] px-3 py-1.5 rounded-sm cursor-pointer hover:bg-[var(--text-hover)] tracking-widest uppercase transition-colors">
             {imageSrc ? 'Change' : 'Upload'}
-            <input ref={fileInputRef} type="file" accept="image/*" onChange={onImageUpload} className="hidden" />
+            <input ref={fileInputRef} type="file" accept="image/*" onChange={(e) => { onImageUpload(e); e.target.value = ''; }} className="hidden" />
           </label>
         </div>
       </div>
