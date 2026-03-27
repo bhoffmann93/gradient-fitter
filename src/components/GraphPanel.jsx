@@ -8,7 +8,7 @@ const GraphPanel = ({ graphRef, shaderCanvasRef }) => (
         <Eye className="w-3 h-3" /> Shader Preview
       </h3>
       <div className="w-full h-16 bg-[var(--border)] border border-[var(--border-strong)] overflow-hidden">
-        <canvas ref={shaderCanvasRef} width={500} height={64} className="w-full h-full" />
+        <canvas ref={shaderCanvasRef} className="w-full h-full" />
       </div>
     </div>
     <h2 className="font-semibold text-[var(--text)] text-[10px] uppercase tracking-widest mb-4 flex items-center gap-2">
