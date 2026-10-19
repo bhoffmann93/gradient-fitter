@@ -29,9 +29,61 @@ const ALGO_DESCRIPTIONS = {
   ),
 };
 
-const LineModeSettings = ({ fitMode, setFitMode, degree, setDegree, lockFrequency, setLockFrequency }) => (
+const PATH_SHAPE_OPTIONS = [
+  ['line', 'Line'],
+  ['curve', 'Curve'],
+  ['arc', 'Arc'],
+  ['circle', 'Circle'],
+];
+
+const PATH_DESCRIPTIONS = {
+  line: 'Straight line between the two endpoints.',
+  curve: 'Quadratic bezier – drag the white control handle to bend the path.',
+  arc: 'Circular arc through both endpoints and the white handle.',
+  circle: 'Full circle around the white center, starting at the colored handle. The gradient is periodic – pairs well with cosine.',
+};
+
+const LineModeSettings = ({
+  fitMode,
+  setFitMode,
+  degree,
+  setDegree,
+  lockFrequency,
+  setLockFrequency,
+  pathShape,
+  setPathShape,
+}) => (
   <div className="space-y-3">
     <div className="flex items-center gap-2">
+      <span className="text-[9px] font-semibold text-[var(--text-muted)] uppercase tracking-widest">Sample Path</span>
+      <div className="flex-1 border-t border-[var(--border)]" />
+    </div>
+
+    <div className="flex bg-[var(--surface-muted)] p-0.5 rounded-sm">
+      {PATH_SHAPE_OPTIONS.map(([shape, label]) => (
+        <button
+          key={shape}
+          onClick={() => setPathShape(shape)}
+          className={`flex-1 py-1.5 text-[10px] rounded-sm font-semibold tracking-widest uppercase transition-all ${
+            pathShape === shape
+              ? 'bg-[var(--surface)] text-[var(--accent)]'
+              : 'text-[var(--text-muted)] hover:text-[var(--text)]'
+          }`}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+
+    <p
+      key={pathShape}
+      className="text-[10px] text-[var(--text-muted)] leading-relaxed"
+      style={{ animation: 'fadeIn 0.15s ease' }}
+    >
+      {PATH_DESCRIPTIONS[pathShape]}
+    </p>
+
+    <div className="flex items-center gap-2 pt-2">
       <span className="text-[9px] font-semibold text-[var(--text-muted)] uppercase tracking-widest">
         Curve Fitting Function
       </span>

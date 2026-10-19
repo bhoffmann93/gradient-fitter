@@ -12,8 +12,8 @@ export const DEFAULTS = {
   contrast: 1.0,
   minLevel: 0,
   maxLevel: 255,
-  p1: { x: 0.05, y: 0.5 },
-  p2: { x: 0.95, y: 0.5 },
+  pathShape: 'line',
+  points: { p1: { x: 0.05, y: 0.5 }, p2: { x: 0.95, y: 0.5 }, c: { x: 0.5, y: 0.5 } },
 };
 
 export const SOLVER_STEPS = 5000;

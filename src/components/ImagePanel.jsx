@@ -120,7 +120,7 @@ const ImagePanel = ({
       </div>
       {imageSrc && appMode === 'line' && (
         <p className="text-[9px] font-semibold uppercase tracking-widest text-[var(--text-muted)] opacity-50 text-center mt-2 pointer-events-none select-none">
-          Drag endpoints to adjust
+          Drag handles to adjust
         </p>
       )}
     </div>

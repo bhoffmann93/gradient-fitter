@@ -2,6 +2,7 @@ import React from 'react';
 import { DEFAULTS, IMAGE_MAX_SIZE, POINT_HIT_RADIUS } from './config.js';
 import { FIT_MODES, buildCode, buildColorCode, linearize, LINEAR_LIGHT_MODES } from './fit/index.js';
 import { computeWeightedTValues } from './math/cosine.js';
+import { makePath, sampleBilinear, convertPoints, PATH_HANDLES } from './math/path.js';
 import { extractDominant, extractGenerative } from './palette/extract.js';
 import { generateColormindPalette, fetchColormindModels } from './palette/colormind.js';
 import { drawGraph } from './canvas/graph.js';
@@ -46,8 +47,8 @@ const App = () => {
   const [error, setError] = React.useState(null);
   const [status, setStatus] = React.useState('idle');
 
-  const [p1, setP1] = React.useState(DEFAULTS.p1);
-  const [p2, setP2] = React.useState(DEFAULTS.p2);
+  const [pathShape, setPathShape] = React.useState(DEFAULTS.pathShape);
+  const [points, setPoints] = React.useState(DEFAULTS.points);
   const [activePoint, setActivePoint] = React.useState(null);
   const [hoveredPoint, setHoveredPoint] = React.useState(null);
   const hoveredPointRef = React.useRef(null);
@@ -109,29 +110,21 @@ const App = () => {
         const w = canvasRef.current.width,
           h = canvasRef.current.height;
         const data = ctx.getImageData(0, 0, w, h).data;
-        const x1 = p1.x * w,
-          y1 = p1.y * h;
-        const x2 = p2.x * w,
-          y2 = p2.y * h;
-        const numSteps = Math.max(2, Math.ceil(Math.hypot(x2 - x1, y2 - y1)));
+        const path = makePath(pathShape, points, w, h);
+        const numSteps = Math.max(2, Math.ceil(path.length));
         const samples = [];
         for (let i = 0; i < numSteps; i++) {
-          const t = i / (numSteps - 1);
-          const px = Math.floor(x1 + (x2 - x1) * t);
-          const py = Math.floor(y1 + (y2 - y1) * t);
-          if (px >= 0 && px < w && py >= 0 && py < h) {
-            const idx = (py * w + px) * 4;
-            samples.push({ r: data[idx] / 255, g: data[idx + 1] / 255, b: data[idx + 2] / 255 });
-          }
+          const { x, y } = path.pointAt(i / (numSteps - 1));
+          if (x >= 0 && x <= w && y >= 0 && y <= h) samples.push(sampleBilinear(data, w, h, x, y));
         }
-        if (samples.length < 2) throw new Error('Line too short');
+        if (samples.length < 2) throw new Error('Path too short');
         lastSamplesRef.current = samples;
         const result = FIT_MODES[fitMode].fit(samples, { degree, lockFrequency: lineLockFrequency });
         setCoefficients(result);
         setGlslCode(buildCode(fitMode, result, { linearLight }, language));
         drawGraph(graphRef.current, samples, result, fitMode, linearLight);
         renderGradientPreview(shaderCanvasRef.current, result, fitMode, linearLight);
-        drawOverlay(uiCanvasRef.current, canvasRef.current, p1, p2, hoveredPointRef.current);
+        drawOverlay(uiCanvasRef.current, canvasRef.current, pathShape, points, hoveredPointRef.current);
         setStatus('done');
       } catch (e) {
         setError(e.message || 'Error during fitting');
@@ -208,32 +201,53 @@ const App = () => {
     performPaletteRefit(original);
   };
 
-  const handleMouseDown = (e) => {
-    if (!uiCanvasRef.current || !imageSrc || appMode !== 'line') return;
+  const TOUCH_HIT_RADIUS = 40;
+
+  // Nearest handle of the current path shape within radius (CSS pixels), or null
+  const hitTest = (clientX, clientY, radius) => {
     const rect = uiCanvasRef.current.getBoundingClientRect();
-    const mx = e.clientX - rect.left,
-      my = e.clientY - rect.top;
-    if (Math.hypot(mx - p1.x * rect.width, my - p1.y * rect.height) < POINT_HIT_RADIUS) {
-      setActivePoint('p1');
-    } else if (Math.hypot(mx - p2.x * rect.width, my - p2.y * rect.height) < POINT_HIT_RADIUS) {
-      setActivePoint('p2');
+    const mx = clientX - rect.left,
+      my = clientY - rect.top;
+    let best = null,
+      bestDist = radius;
+    for (const name of PATH_HANDLES[pathShape]) {
+      const d = Math.hypot(mx - points[name].x * rect.width, my - points[name].y * rect.height);
+      if (d < bestDist) {
+        best = name;
+        bestDist = d;
+      }
+    }
+    return best;
+  };
+
+  const moveActivePoint = (clientX, clientY) => {
+    const rect = uiCanvasRef.current.getBoundingClientRect();
+    const x = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    const y = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+    setPoints((prev) => ({ ...prev, [activePoint]: { x, y } }));
+  };
+
+  const handlePointerDown = (clientX, clientY, radius) => {
+    if (!uiCanvasRef.current || !imageSrc || appMode !== 'line') return;
+    const hit = hitTest(clientX, clientY, radius);
+    if (hit) setActivePoint(hit);
+  };
+
+  const handlePointerUp = () => {
+    if (activePoint) {
+      setActivePoint(null);
+      performFitting();
     }
   };
 
+  const handleMouseDown = (e) => handlePointerDown(e.clientX, e.clientY, POINT_HIT_RADIUS);
+
   const handleMouseMove = (e) => {
     if (!uiCanvasRef.current || !imageSrc || appMode !== 'line') return;
-    const rect = uiCanvasRef.current.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
     if (activePoint) {
-      const x = Math.max(0, Math.min(1, mx / rect.width));
-      const y = Math.max(0, Math.min(1, my / rect.height));
-      if (activePoint === 'p1') setP1({ x, y });
-      else setP2({ x, y });
+      moveActivePoint(e.clientX, e.clientY);
     } else {
-      const d1 = Math.hypot(mx - p1.x * rect.width, my - p1.y * rect.height);
-      const d2 = Math.hypot(mx - p2.x * rect.width, my - p2.y * rect.height);
-      const newHover = d1 < POINT_HIT_RADIUS ? 'p1' : d2 < POINT_HIT_RADIUS ? 'p2' : null;
+      const newHover = hitTest(e.clientX, e.clientY, POINT_HIT_RADIUS);
       if (newHover !== hoveredPointRef.current) {
         hoveredPointRef.current = newHover;
         setHoveredPoint(newHover);
@@ -241,55 +255,31 @@ const App = () => {
     }
   };
 
-  const handleMouseUp = () => {
-    if (activePoint) {
-      setActivePoint(null);
-      performFitting();
-    }
-  };
-
   const handleMouseLeave = () => {
     hoveredPointRef.current = null;
     setHoveredPoint(null);
-    handleMouseUp();
+    handlePointerUp();
   };
 
-  const TOUCH_HIT_RADIUS = 40;
-
-  const handleTouchStart = (e) => {
-    if (!uiCanvasRef.current || !imageSrc || appMode !== 'line') return;
-    const touch = e.touches[0];
-    const rect = uiCanvasRef.current.getBoundingClientRect();
-    const mx = touch.clientX - rect.left,
-      my = touch.clientY - rect.top;
-    if (Math.hypot(mx - p1.x * rect.width, my - p1.y * rect.height) < TOUCH_HIT_RADIUS) {
-      setActivePoint('p1');
-    } else if (Math.hypot(mx - p2.x * rect.width, my - p2.y * rect.height) < TOUCH_HIT_RADIUS) {
-      setActivePoint('p2');
-    }
-  };
+  const handleTouchStart = (e) => handlePointerDown(e.touches[0].clientX, e.touches[0].clientY, TOUCH_HIT_RADIUS);
 
   const handleTouchMove = (e) => {
     if (!activePoint || !uiCanvasRef.current) return;
-    const touch = e.touches[0];
-    const rect = uiCanvasRef.current.getBoundingClientRect();
-    const x = Math.max(0, Math.min(1, (touch.clientX - rect.left) / rect.width));
-    const y = Math.max(0, Math.min(1, (touch.clientY - rect.top) / rect.height));
-    if (activePoint === 'p1') setP1({ x, y });
-    else setP2({ x, y });
+    moveActivePoint(e.touches[0].clientX, e.touches[0].clientY);
   };
 
-  const handleTouchEnd = () => {
-    if (activePoint) {
-      setActivePoint(null);
-      performFitting();
-    }
+  const handlePathShapeChange = (next) => {
+    if (next === pathShape) return;
+    const w = canvasRef.current?.width || 1,
+      h = canvasRef.current?.height || 1;
+    setPoints(convertPoints(pathShape, next, points, w, h));
+    setPathShape(next);
   };
 
   const handleReset = () => {
     setImageSrc(null);
-    setP1(DEFAULTS.p1);
-    setP2(DEFAULTS.p2);
+    setPathShape(DEFAULTS.pathShape);
+    setPoints(DEFAULTS.points);
     setCoefficients(null);
     setGlslCode('');
     setError(null);
@@ -352,13 +342,13 @@ const App = () => {
 
   React.useEffect(() => {
     if (imageSrc && appMode === 'line') performFitting();
-  }, [degree, fitMode, lineLockFrequency]);
+  }, [degree, fitMode, lineLockFrequency, pathShape]);
 
   React.useEffect(() => {
     if (imageSrc && appMode === 'line' && uiCanvasRef.current && canvasRef.current) {
-      drawOverlay(uiCanvasRef.current, canvasRef.current, p1, p2, hoveredPointRef.current);
+      drawOverlay(uiCanvasRef.current, canvasRef.current, pathShape, points, hoveredPointRef.current);
     }
-  }, [p1, p2, hoveredPoint]);
+  }, [pathShape, points, hoveredPoint]);
 
   React.useEffect(() => {
     if (imageSrc && appMode === 'palette') {
@@ -498,13 +488,13 @@ const App = () => {
               onReset={handleReset}
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
+              onMouseUp={handlePointerUp}
               onMouseLeave={handleMouseLeave}
               hoveredPoint={hoveredPoint}
               activePoint={activePoint}
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
+              onTouchEnd={handlePointerUp}
             />
             <GraphPanel graphRef={graphRef} shaderCanvasRef={shaderCanvasRef} />
           </div>
@@ -528,6 +518,8 @@ const App = () => {
                     setDegree={setDegree}
                     lockFrequency={lineLockFrequency}
                     setLockFrequency={setLineLockFrequency}
+                    pathShape={pathShape}
+                    setPathShape={handlePathShapeChange}
                   />
                 </div>
                 <div className="border-t border-[var(--border)] flex-1 relative min-h-[420px]">
