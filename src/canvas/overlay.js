@@ -20,8 +20,6 @@ export const drawOverlay = (uiCanvas, sourceCanvas, shape, points, hoveredPoint 
   ctx.save();
   ctx.clearRect(0, 0, w, h);
   ctx.drawImage(sourceCanvas, 0, 0, w, h);
-  ctx.fillStyle = 'rgba(0,0,0,0.15)';
-  ctx.fillRect(0, 0, w, h);
 
   const px = (p) => [p.x * w, p.y * h];
 
