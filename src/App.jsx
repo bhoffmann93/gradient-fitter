@@ -23,6 +23,7 @@ const App = () => {
 
   const [fitMode, setFitMode] = React.useState(DEFAULTS.fitMode);
   const [degree, setDegree] = React.useState(DEFAULTS.degree);
+  const [polyColorSpace, setPolyColorSpace] = React.useState(DEFAULTS.polyColorSpace);
   const [lineLockFrequency, setLineLockFrequency] = React.useState(true);
 
   const [colorCount, setColorCount] = React.useState(DEFAULTS.colorCount);
@@ -119,7 +120,11 @@ const App = () => {
         }
         if (samples.length < 2) throw new Error('Path too short');
         lastSamplesRef.current = samples;
-        const result = FIT_MODES[fitMode].fit(samples, { degree, lockFrequency: lineLockFrequency });
+        const result = FIT_MODES[fitMode].fit(samples, {
+          degree,
+          lockFrequency: lineLockFrequency,
+          colorSpace: polyColorSpace,
+        });
         setCoefficients(result);
         setGlslCode(buildCode(fitMode, result, { linearLight }, language));
         drawGraph(graphRef.current, samples, result, fitMode, linearLight);
@@ -138,7 +143,12 @@ const App = () => {
     const tValues = weightDominance ? computeWeightedTValues(colors) : null;
     const useLinearLight = linearLight && LINEAR_LIGHT_MODES.includes(paletteFitMode);
     const fittingColors = useLinearLight ? colors.map(linearize) : colors;
-    const result = FIT_MODES[paletteFitMode].fit(fittingColors, { degree, lockFrequency, tValues });
+    const result = FIT_MODES[paletteFitMode].fit(fittingColors, {
+      degree,
+      lockFrequency,
+      tValues,
+      colorSpace: polyColorSpace,
+    });
     setCoefficients(result);
     setGlslCode(
       buildCode(paletteFitMode, result, { linearLight: useLinearLight }, language) +
@@ -342,7 +352,7 @@ const App = () => {
 
   React.useEffect(() => {
     if (imageSrc && appMode === 'line') performFitting();
-  }, [degree, fitMode, lineLockFrequency, pathShape]);
+  }, [degree, polyColorSpace, fitMode, lineLockFrequency, pathShape]);
 
   React.useEffect(() => {
     if (imageSrc && appMode === 'line' && uiCanvasRef.current && canvasRef.current) {
@@ -360,7 +370,7 @@ const App = () => {
   React.useEffect(() => {
     if (imageSrc && appMode === 'palette' && extractedColorsRef.current.length >= 2)
       performPaletteRefit(extractedColorsRef.current);
-  }, [paletteFitMode, lockFrequency, degree, weightDominance, linearLight]);
+  }, [paletteFitMode, lockFrequency, degree, polyColorSpace, weightDominance, linearLight]);
 
   React.useEffect(() => {
     if (!paletteDrawData) return;
@@ -516,6 +526,8 @@ const App = () => {
                     setFitMode={setFitMode}
                     degree={degree}
                     setDegree={setDegree}
+                    polyColorSpace={polyColorSpace}
+                    setPolyColorSpace={setPolyColorSpace}
                     lockFrequency={lineLockFrequency}
                     setLockFrequency={setLineLockFrequency}
                     pathShape={pathShape}
@@ -583,6 +595,8 @@ const App = () => {
                           setWeightDominance={setWeightDominance}
                           degree={degree}
                           setDegree={setDegree}
+                          polyColorSpace={polyColorSpace}
+                          setPolyColorSpace={setPolyColorSpace}
                           apiModel={apiModel}
                           setApiModel={setApiModel}
                           apiModels={apiModels}

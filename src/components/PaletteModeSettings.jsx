@@ -50,6 +50,8 @@ const PaletteModeSettings = ({
   setWeightDominance,
   degree,
   setDegree,
+  polyColorSpace,
+  setPolyColorSpace,
   apiModel,
   setApiModel,
   apiModels,
@@ -254,22 +256,43 @@ const PaletteModeSettings = ({
     </Collapsible>
 
     <Collapsible open={paletteFitMode === 'poly'}>
-      <div className="flex items-center gap-4 pt-0.5">
-        <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 uppercase tracking-wider">
-          Degree
-        </label>
-        <input
-          type="range"
-          min="1"
-          max="6"
-          step="1"
-          value={degree}
-          onChange={(e) => setDegree(parseInt(e.target.value))}
-          className="flex-1 h-1 bg-[var(--border)] rounded cursor-pointer accent-[var(--accent)]"
-        />
-        <span className="text-xs font-mono bg-[var(--accent-bg)] text-[var(--accent)] px-2 py-0.5 rounded-sm">
-          {degree}
-        </span>
+      <div className="space-y-3">
+        <div className="flex items-center gap-4 pt-0.5">
+          <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 uppercase tracking-wider">
+            Degree
+          </label>
+          <input
+            type="range"
+            min="1"
+            max="6"
+            step="1"
+            value={degree}
+            onChange={(e) => setDegree(parseInt(e.target.value))}
+            className="flex-1 h-1 bg-[var(--border)] rounded cursor-pointer accent-[var(--accent)]"
+          />
+          <span className="text-xs font-mono bg-[var(--accent-bg)] text-[var(--accent)] px-2 py-0.5 rounded-sm">
+            {degree}
+          </span>
+        </div>
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-3">
+            <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 uppercase tracking-wider">
+              Color Space
+            </label>
+            <Toggle
+              on={polyColorSpace === 'oklab'}
+              onToggle={() => setPolyColorSpace((v) => (v === 'oklab' ? 'srgb' : 'oklab'))}
+              labelOn="OKLab"
+              labelOff="sRGB"
+            />
+            <span className="text-[10px] text-[var(--text-muted)]">{polyColorSpace === 'oklab' ? 'OKLab' : 'sRGB'}</span>
+          </div>
+          <p className="text-[10px] text-[var(--text-muted)] leading-relaxed">
+            {polyColorSpace === 'oklab'
+              ? 'Fits L, a, b in OKLab – error is closer to what you see, often smoother with a lower degree. The output converts back to sRGB.'
+              : 'Fits R, G, B directly in sRGB. Best match for gradients made with plain sRGB interpolation.'}
+          </p>
+        </div>
       </div>
     </Collapsible>
 

@@ -16,6 +16,12 @@ const Toggle = ({ on, onToggle, labelOn, labelOff }) => (
   </button>
 );
 
+const Collapsible = ({ open, children }) => (
+  <div className={`grid transition-[grid-template-rows] duration-200 ${open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+    <div className="overflow-hidden">{children}</div>
+  </div>
+);
+
 const ALGO_DESCRIPTIONS = {
   poly: 'Least-squares polynomial fit per RGB channel. Higher degree = more flexibility but may overshoot – output is clamped to 0–1. Degree 3–4 works for most gradients.',
   cosine: (
@@ -48,6 +54,8 @@ const LineModeSettings = ({
   setFitMode,
   degree,
   setDegree,
+  polyColorSpace,
+  setPolyColorSpace,
   lockFrequency,
   setLockFrequency,
   pathShape,
@@ -181,6 +189,27 @@ const LineModeSettings = ({
         </span>
       </div>
     </div>
+    <Collapsible open={fitMode === 'poly'}>
+      <div className="space-y-1.5">
+        <div className="flex items-center gap-3">
+          <label className="text-[10px] font-semibold text-[var(--text-secondary)] w-20 uppercase tracking-wider">
+            Color Space
+          </label>
+          <Toggle
+            on={polyColorSpace === 'oklab'}
+            onToggle={() => setPolyColorSpace((v) => (v === 'oklab' ? 'srgb' : 'oklab'))}
+            labelOn="OKLab"
+            labelOff="sRGB"
+          />
+          <span className="text-[10px] text-[var(--text-muted)]">{polyColorSpace === 'oklab' ? 'OKLab' : 'sRGB'}</span>
+        </div>
+        <p className="text-[10px] text-[var(--text-muted)] leading-relaxed">
+          {polyColorSpace === 'oklab'
+            ? 'Fits L, a, b in OKLab – error is closer to what you see, often smoother with a lower degree. The output converts back to sRGB.'
+            : 'Fits R, G, B directly in sRGB. Best match for gradients made with plain sRGB interpolation.'}
+        </p>
+      </div>
+    </Collapsible>
   </div>
 );
 

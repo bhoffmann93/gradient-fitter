@@ -2,8 +2,9 @@ import { evalColor } from '../fit/index.js';
 
 const renderToCanvas = (canvas, coeffs, mode, linearLight = false) => {
   const dpr = window.devicePixelRatio || 1;
-  const w = (canvas.clientWidth || 500) * dpr;
-  const h = (canvas.clientHeight || 64) * dpr;
+  // browser zoom makes dpr fractional; ImageData indexing needs integer dimensions
+  const w = Math.round((canvas.clientWidth || 500) * dpr);
+  const h = Math.round((canvas.clientHeight || 64) * dpr);
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext('2d');

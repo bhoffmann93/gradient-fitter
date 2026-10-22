@@ -1,6 +1,7 @@
 export const DEFAULTS = {
   fitMode: 'poly',
   degree: 3,
+  polyColorSpace: 'srgb',
   colorCount: 5,
   lockFrequency: true,
   paletteFitMode: 'catmull',

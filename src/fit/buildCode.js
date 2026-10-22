@@ -1,6 +1,7 @@
 import { fmtGlsl as fmt } from './glslUtils.js';
+import { buildOklabToSrgbJS } from './oklab.js';
 
-const fmtArr = (vals) => `[${vals.map(fmt).join(', ')}]`;
+const fmtArr = (vals, digits = 3) => `[${vals.map((v) => fmt(v, digits)).join(', ')}]`;
 const clamp01 = (expr) => `Math.min(1, Math.max(0, ${expr}))`;
 
 const buildHelpers = (ts) => {
@@ -37,20 +38,34 @@ export const buildPolyJS = (coeffs, ts = false) => {
   const cast = ts ? ' as [number, number, number]' : '';
   const tParam = ts ? 't: number' : 't';
   const deg = coeffs.r.length;
-  const rows = Array.from({ length: deg }, (_, i) => fmtArr([coeffs.r[i], coeffs.g[i], coeffs.b[i]]));
+  const oklab = coeffs.colorSpace === 'oklab';
+  const rows = Array.from({ length: deg }, (_, i) => fmtArr([coeffs.r[i], coeffs.g[i], coeffs.b[i]], oklab ? 5 : 3));
+  const evalLines = oklab
+    ? [
+        `  const [L, A, B] = [0, 1, 2].map(k => {`,
+        `    let v = 0;`,
+        `    for (let i = 0; i < coeffs.length; i++) v += coeffs[i][k] * Math.pow(t, i);`,
+        `    return v;`,
+        `  });`,
+        `  return oklabToSrgb(L, A, B);`,
+      ]
+    : [
+        `  return [0, 1, 2].map(k => {`,
+        `    let v = 0;`,
+        `    for (let i = 0; i < coeffs.length; i++) v += coeffs[i][k] * Math.pow(t, i);`,
+        `    return ${clamp01('v')};`,
+        `  })${cast};`,
+      ];
   return [
     buildHelpers(ts),
     ``,
+    ...(oklab ? [buildOklabToSrgbJS(ts), ``, `// coefficients are OKLab (L, a, b)`] : []),
     `// Returns [r, g, b] in [0, 1] – normalized sRGB`,
     `function polyPalette(${tParam})${retType} {`,
     `  const coeffs${typeAnn} = [`,
     ...rows.map((r, i) => `    ${r}${i < rows.length - 1 ? ',' : ''}`),
     `  ];`,
-    `  return [0, 1, 2].map(k => {`,
-    `    let v = 0;`,
-    `    for (let i = 0; i < coeffs.length; i++) v += coeffs[i][k] * Math.pow(t, i);`,
-    `    return ${clamp01('v')};`,
-    `  })${cast};`,
+    ...evalLines,
     `}`,
   ].join('\n');
 };
